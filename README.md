@@ -58,6 +58,9 @@ Interception v1.0.1 是 2018 年的驱动（项目已停更），在新版 Windo
 ```
 InternalKeyfreeze\
 ├─ README.md                    本文件
+├─ LICENSE                      MIT 许可证（本项目代码）
+├─ 安装.bat                     一键安装（双击即可，自动提权）
+├─ 卸载.bat                     一键卸载（双击即可，自动提权）
 ├─ Interception.zip             Interception v1.0.1 官方发布包（存档）
 ├─ bin\
 │   ├─ InternalKeyfreeze.exe    主程序（日常使用就点它）
@@ -74,7 +77,18 @@ InternalKeyfreeze\
 └─ sdk\                         Interception SDK（头文件 / lib / 许可证 / 示例）
 ```
 
-## 安装（一次性）
+## 安装
+
+### 方式一：一键安装（推荐，普通用户用这个）
+
+从 [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases) 下载 `InternalKeyfreeze-v2.0.zip`，解压后：
+
+1. **双击 `安装.bat`**（会自动弹 UAC，确认即可）
+2. **重启电脑**
+
+安装脚本会自动完成：装驱动 → 复制文件到 `C:\Program Files\InternalKeyfreeze\` → 创建桌面/开始菜单快捷方式。重启后双击桌面快捷方式即可运行。
+
+### 方式二：手动安装（开发者用这个）
 
 1. 右键 `driver\install-driver.bat` → **以管理员身份运行**
 2. **重启电脑**（过滤驱动开机加载，必须重启）
@@ -87,7 +101,13 @@ InternalKeyfreeze\
 3. 之后**左键**托盘图标 = 冻结 / 恢复切换；**右键** = 重新识别 / 退出
 4. 程序退出或崩溃时驱动自动恢复输入，内置键盘永远不会被锁死；Ctrl+Alt+Del 始终可用
 
-## 卸载驱动
+## 卸载
+
+### 方式一：一键卸载（推荐）
+
+双击 `卸载.bat`（自动提权）→ 自动结束程序、卸载驱动、删除 `C:\Program Files\InternalKeyfreeze\`、清理快捷方式 → 重启后彻底移除。
+
+### 方式二：手动卸载
 
 双击 `driver\UninstallDriver.exe`（弹 UAC 确认）→ 它会自动结束正在运行的
 InternalKeyfreeze、调用官方安装器卸载驱动，并询问是否立即重启。
