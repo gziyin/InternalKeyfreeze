@@ -1,14 +1,7 @@
 @echo off
-chcp 65001 >nul
-setlocal
-title InternalKeyfreeze å¸è½½ç¨‹åº
+setlocal enabledelayedexpansion
+title InternalKeyfreeze Ğ¶ÔØ³ÌĞò
 
-:: ========================================================================
-:: InternalKeyfreeze ä¸€é”®å¸è½½è„šæœ¬
-:: ç”¨æˆ·åŒå‡»å³å¯ï¼Œè„šæœ¬ä¼šè‡ªåŠ¨ææƒå¹¶å®Œæˆå…¨éƒ¨å¸è½½
-:: ========================================================================
-
-:: è‡ªåŠ¨ææƒ
 >nul 2>&1 net session
 if %errorlevel% neq 0 (
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
@@ -18,95 +11,56 @@ if %errorlevel% neq 0 (
 cd /d "%~dp0"
 
 echo ================================================================
-echo            InternalKeyfreeze å¸è½½ç¨‹åº
+echo            InternalKeyfreeze Ğ¶ÔØ³ÌĞò
 echo ================================================================
 echo.
-echo  å³å°†æ‰§è¡Œï¼š
-echo    1. ç»“æŸæ­£åœ¨è¿è¡Œçš„ InternalKeyfreeze
-echo    2. å¸è½½ Interception å†…æ ¸é©±åŠ¨
-echo    3. åˆ é™¤ç¨‹åºæ–‡ä»¶ (C:\Program Files\InternalKeyfreeze)
-echo    4. åˆ é™¤æ¡Œé¢å’Œå¼€å§‹èœå•å¿«æ·æ–¹å¼
+echo  ¼´½«Ö´ĞĞ£º
+echo    1. ½áÊøÕıÔÚÔËĞĞµÄ InternalKeyfreeze
+echo    2. Ğ¶ÔØ Interception Çı¶¯
+echo    3. É¾³ı C:\Program Files\InternalKeyfreeze
+echo    4. É¾³ı¿ì½İ·½Ê½
 echo.
-echo  å¸è½½å®Œæˆåéœ€è¦é‡å¯ç”µè„‘è®©é©±åŠ¨å½»åº•ç§»é™¤ã€‚
+echo  Ğ¶ÔØÍê³ÉºóĞèÒªÖØÆôµçÄÔ¡£
 echo.
-echo  ç¡®è®¤å¸è½½ï¼Ÿ(Ctrl+C å–æ¶ˆ)
+echo  È·ÈÏĞ¶ÔØ£¿(Ctrl+C È¡Ïû)
 pause
 
 echo.
-echo ================================================================
-echo  [1/4] ç»“æŸæ­£åœ¨è¿è¡Œçš„ InternalKeyfreeze
-echo ================================================================
+echo  [1/4] ½áÊø InternalKeyfreeze ½ø³Ì...
 taskkill /F /IM InternalKeyfreeze.exe 2>nul
-if %errorlevel% equ 0 (
-    echo å·²ç»“æŸ InternalKeyfreeze è¿›ç¨‹ã€‚
-) else (
-    echo InternalKeyfreeze æœªåœ¨è¿è¡Œï¼Œè·³è¿‡ã€‚
-)
+if %errorlevel% equ 0 (echo ÒÑ½áÊø¡£) else (echo Î´ÔÚÔËĞĞ£¬Ìø¹ı¡£)
 
 echo.
-echo ================================================================
-echo  [2/4] å¸è½½ Interception é©±åŠ¨
-echo ================================================================
+echo  [2/4] Ğ¶ÔØÇı¶¯...
 set "DRIVER_DIR=C:\Program Files\InternalKeyfreeze\driver"
 if exist "%DRIVER_DIR%\install-interception.exe" (
     "%DRIVER_DIR%\install-interception.exe" /uninstall
-    if !errorlevel! equ 0 (
-        echo é©±åŠ¨å¸è½½æˆåŠŸã€‚
-    ) else (
-        echo [è­¦å‘Š] é©±åŠ¨å¸è½½å™¨è¿”å›éé›¶é€€å‡ºç ï¼Œå¯èƒ½é©±åŠ¨æœªå®‰è£…æˆ–å·²å¸è½½ã€‚
-    )
+    if !errorlevel! equ 0 (echo Çı¶¯ÒÑĞ¶ÔØ¡£) else (echo [¾¯¸æ] ·ÇÁãÍË³öÂë¡£)
 ) else if exist "driver\install-interception.exe" (
     "driver\install-interception.exe" /uninstall
-    if !errorlevel! equ 0 (
-        echo é©±åŠ¨å¸è½½æˆåŠŸã€‚
-    ) else (
-        echo [è­¦å‘Š] é©±åŠ¨å¸è½½å™¨è¿”å›éé›¶é€€å‡ºç ã€‚
-    )
+    if !errorlevel! equ 0 (echo Çı¶¯ÒÑĞ¶ÔØ¡£) else (echo [¾¯¸æ] ·ÇÁãÍË³öÂë¡£)
 ) else (
-    echo [è­¦å‘Š] æ‰¾ä¸åˆ° install-interception.exeï¼Œè·³è¿‡é©±åŠ¨å¸è½½ã€‚
-    echo å¦‚éœ€æ‰‹åŠ¨å¸è½½é©±åŠ¨ï¼Œè¯·ä» GitHub é‡æ–°ä¸‹è½½å®‰è£…åŒ…ã€‚
+    echo [¾¯¸æ] ÕÒ²»µ½ install-interception.exe£¬Ìø¹ı¡£
 )
 
 echo.
-echo ================================================================
-echo  [3/4] åˆ é™¤ç¨‹åºæ–‡ä»¶
-echo ================================================================
+echo  [3/4] É¾³ı³ÌĞòÎÄ¼ş...
 set "DEST=C:\Program Files\InternalKeyfreeze"
 if exist "%DEST%" (
     rmdir /S /Q "%DEST%"
-    if !errorlevel! equ 0 (
-        echo å·²åˆ é™¤ %DEST%
-    ) else (
-        echo [è­¦å‘Š] éƒ¨åˆ†æ–‡ä»¶å¯èƒ½è¢«å ç”¨ï¼Œæœªèƒ½å®Œå…¨åˆ é™¤ã€‚
-        echo è¯·é‡å¯åæ‰‹åŠ¨åˆ é™¤ %DEST%
-    )
+    if !errorlevel! equ 0 (echo ÒÑÉ¾³ı %DEST%) else (echo [¾¯¸æ] ²¿·ÖÎÄ¼ş±»Õ¼ÓÃ£¬ÇëÖØÆôºóÊÖ¶¯É¾³ı¡£)
 ) else (
-    echo ç¨‹åºç›®å½•ä¸å­˜åœ¨ï¼Œè·³è¿‡ã€‚
+    echo Ä¿Â¼²»´æÔÚ£¬Ìø¹ı¡£
 )
 
 echo.
-echo ================================================================
-echo  [4/4] åˆ é™¤å¿«æ·æ–¹å¼
-echo ================================================================
-powershell -NoProfile -Command ^
-  "$ws = New-Object -ComObject WScript.Shell; " ^
-  "$desktop = [Environment]::GetFolderPath('Desktop'); " ^
-  "$programs = [Environment]::GetFolderPath('Programs'); " ^
-  "$desktopLnk = \"$desktop\InternalKeyfreeze.lnk\"; " ^
-  "$programsLnk = \"$programs\InternalKeyfreeze.lnk\"; " ^
-  "if (Test-Path $desktopLnk) { Remove-Item $desktopLnk -Force; Write-Host 'å·²åˆ é™¤æ¡Œé¢å¿«æ·æ–¹å¼' } else { Write-Host 'æ¡Œé¢å¿«æ·æ–¹å¼ä¸å­˜åœ¨' }; " ^
-  "if (Test-Path $programsLnk) { Remove-Item $programsLnk -Force; Write-Host 'å·²åˆ é™¤å¼€å§‹èœå•å¿«æ·æ–¹å¼' } else { Write-Host 'å¼€å§‹èœå•å¿«æ·æ–¹å¼ä¸å­˜åœ¨' }"
+echo  [4/4] É¾³ı¿ì½İ·½Ê½...
+powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $d = [Environment]::GetFolderPath('Desktop'); $p = [Environment]::GetFolderPath('Programs'); foreach($lnk in @("$d\InternalKeyfreeze.lnk","$p\InternalKeyfreeze.lnk")){ if(Test-Path $lnk){Remove-Item $lnk -Force; Write-Host "Removed: $lnk"} }"
 
 echo.
-echo ================================================================
-echo  å¸è½½å®Œæˆï¼
-echo ================================================================
-echo.
 echo  ============================================
-echo    è¯·é‡å¯ç”µè„‘è®©é©±åŠ¨å½»åº•ç§»é™¤ï¼
+echo    Ğ¶ÔØÍê³É£¡ÇëÖØÆôµçÄÔ³¹µ×ÒÆ³ıÇı¶¯¡£
 echo  ============================================
-echo.
-echo  é‡å¯å InternalKeyfreeze å°†å®Œå…¨ä»ç³»ç»Ÿä¸­ç§»é™¤ã€‚
 echo.
 pause
 endlocal

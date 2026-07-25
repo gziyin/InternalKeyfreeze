@@ -1,63 +1,48 @@
 @echo off
-chcp 65001 >nul
 setlocal enabledelayedexpansion
-title InternalKeyfreeze å®‰è£…ç¨‹åº
+title InternalKeyfreeze °²×°³ÌĞò
 
-:: ========================================================================
-:: InternalKeyfreeze ä¸€é”®å®‰è£…è„šæœ¬
-:: ç”¨æˆ·åŒå‡»å³å¯ï¼Œè„šæœ¬ä¼šè‡ªåŠ¨ææƒå¹¶å®Œæˆå…¨éƒ¨å®‰è£…
-:: ========================================================================
-
-:: è‡ªåŠ¨ææƒï¼šæ£€æµ‹æ˜¯å¦ç®¡ç†å‘˜ï¼Œå¦‚æœä¸æ˜¯åˆ™ç”¨ PowerShell é‡å¯è‡ªå·±
 >nul 2>&1 net session
 if %errorlevel% neq 0 (
     powershell -NoProfile -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b
 )
 
-:: ææƒåå·¥ä½œç›®å½•ä¼šå˜æˆ System32ï¼Œåˆ‡å›è„šæœ¬æ‰€åœ¨ç›®å½•
 cd /d "%~dp0"
 
 echo ================================================================
-echo            InternalKeyfreeze å®‰è£…ç¨‹åº
+echo            InternalKeyfreeze °²×°³ÌĞò
 echo ================================================================
 echo.
-echo  å³å°†æ‰§è¡Œï¼š
-echo    1. å®‰è£… Interception å†…æ ¸é”®ç›˜è¿‡æ»¤é©±åŠ¨
-echo    2. å¤åˆ¶ç¨‹åºæ–‡ä»¶åˆ° C:\Program Files\InternalKeyfreeze
-echo    3. åˆ›å»ºæ¡Œé¢å’Œå¼€å§‹èœå•å¿«æ·æ–¹å¼
+echo  ¼´½«Ö´ĞĞ£º
+echo    1. °²×° Interception ÄÚºË¼üÅÌ¹ıÂËÇı¶¯
+echo    2. ¸´ÖÆ³ÌĞòÎÄ¼şµ½ C:\Program Files\InternalKeyfreeze
+echo    3. ´´½¨×ÀÃæºÍ¿ªÊ¼²Ëµ¥¿ì½İ·½Ê½
 echo.
-echo  å®‰è£…å®Œæˆåéœ€è¦é‡å¯ç”µè„‘è®©é©±åŠ¨ç”Ÿæ•ˆã€‚
+echo  °²×°Íê³ÉºóĞèÒªÖØÆôµçÄÔÈÃÇı¶¯ÉúĞ§¡£
 echo.
-echo  ç¡®è®¤å®‰è£…ï¼Ÿ(Ctrl+C å–æ¶ˆ)
+echo  È·ÈÏ°²×°£¿(Ctrl+C È¡Ïû)
 pause
 
 echo.
-echo ================================================================
-echo  [1/4] å®‰è£… Interception é©±åŠ¨
-echo ================================================================
+echo  [1/4] °²×° Interception Çı¶¯...
 if not exist "driver\install-interception.exe" (
-    echo [é”™è¯¯] æ‰¾ä¸åˆ° driver\install-interception.exe
-    echo è¯·ç¡®è®¤å®‰è£…åŒ…å®Œæ•´ï¼Œæˆ–ä» GitHub é‡æ–°ä¸‹è½½ã€‚
+    echo [´íÎó] ÕÒ²»µ½ driver\install-interception.exe
+    echo ÇëÈ·ÈÏ°²×°°üÍêÕû£¬»ò´Ó GitHub ÖØĞÂÏÂÔØ¡£
     pause
     exit /b 1
 )
 "driver\install-interception.exe" /install
 if !errorlevel! neq 0 (
-    echo.
-    echo [è­¦å‘Š] é©±åŠ¨å®‰è£…å™¨è¿”å›äº†éé›¶é€€å‡ºç ã€‚
-    echo å¯èƒ½é©±åŠ¨å·²ç»å®‰è£…è¿‡ï¼Œæˆ–è€…å®‰è£…è¢«æ‹’ç»ã€‚
-    echo ç»§ç»­å®‰è£…ç¨‹åºæ–‡ä»¶...
+    echo [¾¯¸æ] Çı¶¯°²×°Æ÷·µ»Ø·ÇÁãÍË³öÂë£¬¿ÉÄÜÒÑ°²×°¹ı¡£
+    echo ¼ÌĞø¸´ÖÆÎÄ¼ş...
 ) else (
-    echo é©±åŠ¨å®‰è£…æˆåŠŸã€‚
+    echo Çı¶¯°²×°³É¹¦¡£
 )
 
 echo.
-echo ================================================================
-echo  [2/4] å¤åˆ¶ç¨‹åºæ–‡ä»¶
-echo ================================================================
+echo  [2/4] ¸´ÖÆ³ÌĞòÎÄ¼ş...
 set "DEST=C:\Program Files\InternalKeyfreeze"
-echo ç›®æ ‡ç›®å½•: %DEST%
 if not exist "%DEST%\bin" mkdir "%DEST%\bin"
 if not exist "%DEST%\driver" mkdir "%DEST%\driver"
 copy /Y "bin\InternalKeyfreeze.exe" "%DEST%\bin\" >nul
@@ -67,53 +52,29 @@ copy /Y "driver\UninstallDriver.exe" "%DEST%\driver\" >nul
 copy /Y "driver\install-driver.bat" "%DEST%\driver\" >nul
 if exist "README.md" copy /Y "README.md" "%DEST%\" >nul
 if exist "LICENSE" copy /Y "LICENSE" "%DEST%\" >nul
-echo æ–‡ä»¶å¤åˆ¶å®Œæˆã€‚
+echo ÎÄ¼şÒÑ¸´ÖÆµ½ %DEST%
 
 echo.
-echo ================================================================
-echo  [3/4] åˆ›å»ºå¿«æ·æ–¹å¼
-echo ================================================================
-:: æ¡Œé¢å¿«æ·æ–¹å¼
-powershell -NoProfile -Command ^
-  "$ws = New-Object -ComObject WScript.Shell; " ^
-  "$desktop = [Environment]::GetFolderPath('Desktop'); " ^
-  "$sc = $ws.CreateShortcut(\"$desktop\InternalKeyfreeze.lnk\"); " ^
-  "$sc.TargetPath = '%DEST%\bin\InternalKeyfreeze.exe'; " ^
-  "$sc.WorkingDirectory = '%DEST%\bin'; " ^
-  "$sc.Description = 'å†»ç»“ç¬”è®°æœ¬å†…ç½®é”®ç›˜'; " ^
-  "$sc.Save(); " ^
-  "Write-Host 'æ¡Œé¢å¿«æ·æ–¹å¼å·²åˆ›å»º'"
-
-:: å¼€å§‹èœå•å¿«æ·æ–¹å¼
-powershell -NoProfile -Command ^
-  "$ws = New-Object -ComObject WScript.Shell; " ^
-  "$programs = [Environment]::GetFolderPath('Programs'); " ^
-  "$sc = $ws.CreateShortcut(\"$programs\InternalKeyfreeze.lnk\"); " ^
-  "$sc.TargetPath = '%DEST%\bin\InternalKeyfreeze.exe'; " ^
-  "$sc.WorkingDirectory = '%DEST%\bin'; " ^
-  "$sc.Description = 'å†»ç»“ç¬”è®°æœ¬å†…ç½®é”®ç›˜'; " ^
-  "$sc.Save(); " ^
-  "Write-Host 'å¼€å§‹èœå•å¿«æ·æ–¹å¼å·²åˆ›å»º'"
+echo  [3/4] ´´½¨¿ì½İ·½Ê½...
+powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $d = [Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut(\"$d\InternalKeyfreeze.lnk\"); $s.TargetPath = '%DEST%\bin\InternalKeyfreeze.exe'; $s.WorkingDirectory = '%DEST%\bin'; $s.Description = 'Freeze laptop built-in keyboard'; $s.Save(); Write-Host 'Desktop shortcut created'"
+powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $p = [Environment]::GetFolderPath('Programs'); $s = $ws.CreateShortcut(\"$p\InternalKeyfreeze.lnk\"); $s.TargetPath = '%DEST%\bin\InternalKeyfreeze.exe'; $s.WorkingDirectory = '%DEST%\bin'; $s.Description = 'Freeze laptop built-in keyboard'; $s.Save(); Write-Host 'Start menu shortcut created'"
 
 echo.
-echo ================================================================
-echo  [4/4] å®‰è£…å®Œæˆ
-echo ================================================================
+echo  [4/4] °²×°Íê³É£¡
 echo.
-echo  âœ“ é©±åŠ¨å·²å®‰è£…
-echo  âœ“ ç¨‹åºå·²å¤åˆ¶åˆ° %DEST%
-echo  âœ“ æ¡Œé¢å¿«æ·æ–¹å¼å·²åˆ›å»º
-echo  âœ“ å¼€å§‹èœå•å¿«æ·æ–¹å¼å·²åˆ›å»º
+echo  [OK] Çı¶¯ÒÑ°²×°
+echo  [OK] ³ÌĞòÒÑ¸´ÖÆµ½ %DEST%
+echo  [OK] ×ÀÃæ¿ì½İ·½Ê½ÒÑ´´½¨
+echo  [OK] ¿ªÊ¼²Ëµ¥¿ì½İ·½Ê½ÒÑ´´½¨
 echo.
 echo  ============================================
-echo    è¯·é‡å¯ç”µè„‘è®©é©±åŠ¨ç”Ÿæ•ˆï¼
+echo    ÇëÖØÆôµçÄÔÈÃÇı¶¯ÉúĞ§£¡
 echo  ============================================
 echo.
-echo  é‡å¯åï¼š
-echo    åŒå‡»æ¡Œé¢çš„ InternalKeyfreeze å¿«æ·æ–¹å¼è¿è¡Œ
-echo    å·¦é”®æ‰˜ç›˜å›¾æ ‡ â†’ åœ¨å†…ç½®é”®ç›˜ä¸ŠæŒ‰ä»»æ„é”® â†’ è‡ªåŠ¨è¯†åˆ«å¹¶å†»ç»“
+echo  ÖØÆôºó£ºË«»÷×ÀÃæµÄ InternalKeyfreeze ¿ì½İ·½Ê½ÔËĞĞ
+echo  ×ó¼üÍĞÅÌÍ¼±ê -> ÔÚÄÚÖÃ¼üÅÌÉÏ°´ÈÎÒâ¼ü -> ×Ô¶¯Ê¶±ğ²¢¶³½á
 echo.
-echo  å¸è½½ï¼šè¿è¡Œ C:\Program Files\InternalKeyfreeze\driver\UninstallDriver.exe
+echo  Ğ¶ÔØ£ºÔËĞĞ Ğ¶ÔØ.bat »ò C:\Program Files\InternalKeyfreeze\driver\UninstallDriver.exe
 echo.
 pause
 endlocal
