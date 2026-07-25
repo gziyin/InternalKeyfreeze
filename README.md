@@ -1,5 +1,7 @@
 # InternalKeyfreeze
 
+**中文** | [English](README.en.md)
+
 冻结**笔记本内置键盘**、不影响**外置 USB / 蓝牙键盘**的 Windows 托盘小工具。
 仿照 [OpenKeyfreeze](https://github.com/sukibaby/OpenKeyfreeze)，但把"一刀切锁全部键盘"改成了"只锁内置键盘"。
 
@@ -57,7 +59,8 @@ Interception v1.0.1 是 2018 年的驱动（项目已停更），在新版 Windo
 
 ```
 InternalKeyfreeze\
-├─ README.md                    本文件
+├─ README.md                    本文件（中文）
+├─ README.en.md                 英文版 readme
 ├─ LICENSE                      MIT 许可证（本项目代码）
 ├─ 安装.bat                     一键安装（双击即可，自动提权）
 ├─ 卸载.bat                     一键卸载（双击即可，自动提权）
