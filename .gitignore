@@ -1,0 +1,33 @@
+# 用户配置文件（每个用户不同，不提交）
+bin/InternalKeyfreeze.ini
+
+# 编译中间文件
+src/ud.rc
+src/ud.res
+*.obj
+*.o
+*.res
+*.pdb
+*.ilk
+*.exp
+
+# IDE / 编辑器
+.vs/
+.vscode/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.swp
+*~
+
+# 系统垃圾
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# 个人文件（非项目内容）
+抖音文案_*.md
+
+# 打包产物（release zip 不进仓库，通过 GitHub Release 发布）
+release/
