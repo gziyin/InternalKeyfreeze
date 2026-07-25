@@ -64,9 +64,12 @@ InternalKeyfreeze\
 ├─ README.md                    本文件（中文）
 ├─ README.en.md                 英文版 readme
 ├─ LICENSE                      MIT 许可证（本项目代码）
+├─ build_icons.bat              重新生成图标资源（编译前运行，详见下方）
 ├─ 安装.bat                     一键安装（双击即可，自动提权）
 ├─ 卸载.bat                     一键卸载（双击即可，自动提权）
 ├─ Interception.zip             Interception v1.0.1 官方发布包（存档）
+├─ assets\                      图标源与生成产物（icon-master.png / *.ico / 展示用 png）
+├─ build\                       编译中间产物（.o / .res，已在 .gitignore 忽略）
 ├─ bin\
 │   ├─ InternalKeyfreeze.exe    主程序（日常使用就点它）
 │   └─ interception.dll         运行库（必须与 exe 同目录）
@@ -76,6 +79,8 @@ InternalKeyfreeze\
 │   └─ install-interception.exe 官方驱动安装器（装/卸共用，被上面两个调用）
 ├─ src\
 │   ├─ InternalKeyfreeze.cpp    主程序源码
+│   ├─ InternalKeyfreeze.rc     Windows 资源脚本（图标定义）
+│   ├─ resources.h              资源 ID 头文件
 │   ├─ UninstallDriver.cpp      卸载器源码
 │   ├─ UninstallDriver.manifest 卸载器 UAC manifest
 │   └─ legacy\                  v1 存档（SetupAPI 禁用方案，本机不可用）
@@ -120,15 +125,22 @@ InternalKeyfreeze、调用官方安装器卸载驱动，并询问是否立即重
 
 ## 重新编译
 
-主程序（无需链接任何库，dll 运行时动态加载）：
+主程序（无需链接任何库，dll 运行时动态加载）。图标通过 Windows 资源脚本 `src/InternalKeyfreeze.rc` 嵌入 exe，需先用 `build_icons.bat` 生成 `assets/*.ico`（首次克隆或想换图标时运行一次）。
 
 ```bat
-:: MSVC
-cl /EHsc /W4 src\InternalKeyfreeze.cpp /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
+:: 1) 生成图标资源（首次 / 修改图标后）
+build_icons.bat
 
-:: MinGW-w64
-g++ -O2 -municode -mwindows src/InternalKeyfreeze.cpp -o bin/InternalKeyfreeze.exe
+:: 2) MSVC —— 编译资源并链接
+rc src\InternalKeyfreeze.rc
+cl /EHsc /W4 src\InternalKeyfreeze.cpp src\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
+
+:: 3) MinGW-w64 —— 资源编译为 COFF 并链接
+windres --output-format=coff -i src\InternalKeyfreeze.rc -o build\InternalKeyfreeze.res.o
+g++ -O2 -municode -mwindows src\InternalKeyfreeze.cpp build\InternalKeyfreeze.res.o -o bin\InternalKeyfreeze.exe
 ```
+
+> `build\` 为编译中间目录（已在 `.gitignore` 中忽略），不会进入仓库。
 
 卸载器（需内嵌 manifest，MinGW 示例）：
 

@@ -31,3 +31,6 @@ desktop.ini
 
 # 打包产物（release zip 不进仓库，通过 GitHub Release 发布）
 release/
+
+# 个人工作区（含本地记忆、Pillow 等构建依赖，不进仓库）
+.workbuddy/

@@ -2,6 +2,8 @@
 
 [中文](README.md) | **English**
 
+<p align="center"><img src="assets/icon-256.png" width="140" alt="InternalKeyfreeze icon"></p>
+
 A Windows tray utility that **freezes the laptop's built-in keyboard** while leaving **external USB / Bluetooth keyboards** fully functional.
 Modeled after [OpenKeyfreeze](https://github.com/sukibaby/OpenKeyfreeze), but instead of blocking all keyboards indiscriminately, it only locks the built-in one.
 
@@ -62,9 +64,12 @@ InternalKeyfreeze\
 ├─ README.md                    This file (Chinese)
 ├─ README.en.md                 English readme
 ├─ LICENSE                      MIT license (project's own code)
+├─ build_icons.bat              Regenerate icon assets (run before building)
 ├─ 安装.bat                     One-click install (double-click, auto-elevates)
 ├─ 卸载.bat                     One-click uninstall (double-click, auto-elevates)
 ├─ Interception.zip             Interception v1.0.1 official release (archive)
+├─ assets\                      Icon source & generated outputs (icon-master.png / *.ico / preview pngs)
+├─ build\                       Build intermediates (.o / .res, gitignored)
 ├─ bin\
 │   ├─ InternalKeyfreeze.exe    Main program (click this for daily use)
 │   └─ interception.dll         Runtime library (must be next to the exe)
@@ -74,6 +79,8 @@ InternalKeyfreeze\
 │   └─ install-interception.exe Official driver installer (used by both above)
 ├─ src\
 │   ├─ InternalKeyfreeze.cpp    Main program source
+│   ├─ InternalKeyfreeze.rc     Windows resource script (icon definitions)
+│   ├─ resources.h              Resource ID header
 │   ├─ UninstallDriver.cpp      Uninstaller source
 │   ├─ UninstallDriver.manifest Uninstaller UAC manifest
 │   └─ legacy\                  v1 archive (SetupAPI disable approach, unusable on this machine)
@@ -117,15 +124,22 @@ Double-click `driver\UninstallDriver.exe` (UAC prompt) → it automatically term
 
 ## Building from Source
 
-Main program (no libraries to link — the dll is loaded dynamically at runtime):
+Main program (no libraries to link — the dll is loaded dynamically at runtime). The icon is embedded into the exe via the Windows resource script `src/InternalKeyfreeze.rc`; run `build_icons.bat` first to generate `assets/*.ico` (once, or whenever you change the icon).
 
 ```bat
-:: MSVC
-cl /EHsc /W4 src\InternalKeyfreeze.cpp /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
+:: 1) Generate icon assets (first time / after changing the icon)
+build_icons.bat
 
-:: MinGW-w64
-g++ -O2 -municode -mwindows src/InternalKeyfreeze.cpp -o bin/InternalKeyfreeze.exe
+:: 2) MSVC — compile resource and link
+rc src\InternalKeyfreeze.rc
+cl /EHsc /W4 src\InternalKeyfreeze.cpp src\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
+
+:: 3) MinGW-w64 — compile resource to COFF and link
+windres --output-format=coff -i src\InternalKeyfreeze.rc -o build\InternalKeyfreeze.res.o
+g++ -O2 -municode -mwindows src\InternalKeyfreeze.cpp build\InternalKeyfreeze.res.o -o bin\InternalKeyfreeze.exe
 ```
+
+> `build\` is the build-intermediate directory (already in `.gitignore`) and does not enter the repo.
 
 Uninstaller (requires embedded manifest, MinGW example):
 
