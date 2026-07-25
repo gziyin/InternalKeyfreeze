@@ -56,8 +56,26 @@ echo 文件已复制到 %DEST%
 
 echo.
 echo  [3/4] 创建快捷方式...
-powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $d = [Environment]::GetFolderPath('Desktop'); $s = $ws.CreateShortcut(\"$d\InternalKeyfreeze.lnk\"); $s.TargetPath = '%DEST%\bin\InternalKeyfreeze.exe'; $s.WorkingDirectory = '%DEST%\bin'; $s.Description = 'Freeze laptop built-in keyboard'; $s.Save(); Write-Host 'Desktop shortcut created'"
-powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $p = [Environment]::GetFolderPath('Programs'); $s = $ws.CreateShortcut(\"$p\InternalKeyfreeze.lnk\"); $s.TargetPath = '%DEST%\bin\InternalKeyfreeze.exe'; $s.WorkingDirectory = '%DEST%\bin'; $s.Description = 'Freeze laptop built-in keyboard'; $s.Save(); Write-Host 'Start menu shortcut created'"
+:: 用 VBScript 创建快捷方式（比 PowerShell 转义更可靠）
+set "VBS=%TEMP%\_icf_sc.vbs"
+echo Set ws = CreateObject("WScript.Shell") > "%VBS%"
+echo Set sc = ws.CreateShortcut(ws.SpecialFolders("Desktop") ^& "\InternalKeyfreeze.lnk") >> "%VBS%"
+echo sc.TargetPath = "%DEST%\bin\InternalKeyfreeze.exe" >> "%VBS%"
+echo sc.WorkingDirectory = "%DEST%\bin" >> "%VBS%"
+echo sc.Description = "Freeze laptop built-in keyboard" >> "%VBS%"
+echo sc.Save >> "%VBS%"
+echo Set sc2 = ws.CreateShortcut(ws.SpecialFolders("Programs") ^& "\InternalKeyfreeze.lnk") >> "%VBS%"
+echo sc2.TargetPath = "%DEST%\bin\InternalKeyfreeze.exe" >> "%VBS%"
+echo sc2.WorkingDirectory = "%DEST%\bin" >> "%VBS%"
+echo sc2.Description = "Freeze laptop built-in keyboard" >> "%VBS%"
+echo sc2.Save >> "%VBS%"
+cscript //nologo "%VBS%" >nul 2>&1
+if !errorlevel! equ 0 (
+    echo 桌面和开始菜单快捷方式已创建
+) else (
+    echo [警告] 快捷方式创建失败，请手动创建
+)
+del "%VBS%" >nul 2>&1
 
 echo.
 echo  [4/4] 安装完成！
@@ -72,7 +90,7 @@ echo    请重启电脑让驱动生效！
 echo  ============================================
 echo.
 echo  重启后：双击桌面的 InternalKeyfreeze 快捷方式运行
-echo  左键托盘图标 -> 在内置键盘上按任意键 -> 自动识别并冻结
+echo  左键托盘图标 -^> 在内置键盘上按任意键 -^> 自动识别并冻结
 echo.
 echo  卸载：运行 卸载.bat 或 C:\Program Files\InternalKeyfreeze\driver\UninstallDriver.exe
 echo.

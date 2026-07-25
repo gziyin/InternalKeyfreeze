@@ -55,7 +55,20 @@ if exist "%DEST%" (
 
 echo.
 echo  [4/4] 删除快捷方式...
-powershell -NoProfile -Command "$ws = New-Object -ComObject WScript.Shell; $d = [Environment]::GetFolderPath('Desktop'); $p = [Environment]::GetFolderPath('Programs'); foreach($lnk in @("$d\InternalKeyfreeze.lnk","$p\InternalKeyfreeze.lnk")){ if(Test-Path $lnk){Remove-Item $lnk -Force; Write-Host "Removed: $lnk"} }"
+set "DESKTOP_LNK=%USERPROFILE%\Desktop\InternalKeyfreeze.lnk"
+set "STARTMENU_LNK=%APPDATA%\Microsoft\Windows\Start Menu\Programs\InternalKeyfreeze.lnk"
+if exist "%DESKTOP_LNK%" (
+    del "%DESKTOP_LNK%"
+    echo 已删除桌面快捷方式
+) else (
+    echo 桌面快捷方式不存在
+)
+if exist "%STARTMENU_LNK%" (
+    del "%STARTMENU_LNK%"
+    echo 已删除开始菜单快捷方式
+) else (
+    echo 开始菜单快捷方式不存在
+)
 
 echo.
 echo  ============================================
