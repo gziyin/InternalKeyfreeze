@@ -49,6 +49,7 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <strsafe.h>
+#include "resources.h"
 
 #define MAX_LOADSTRING   100
 #define WM_TRAYICON      (WM_USER + 1)
@@ -332,11 +333,11 @@ ATOM MyRegisterClass(HINSTANCE instance) {
     wcex.style         = CS_HREDRAW | CS_VREDRAW;
     wcex.lpfnWndProc   = WndProc;
     wcex.hInstance     = instance;
-    wcex.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
+    wcex.hIcon         = LoadIcon(instance, MAKEINTRESOURCE(IDI_APP_ICON));
     wcex.hCursor       = LoadCursor(NULL, IDC_ARROW);
     wcex.hbrBackground = (HBRUSH)(COLOR_WINDOW + 1);
     wcex.lpszClassName = g_window_class;
-    wcex.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
+    wcex.hIconSm       = LoadIcon(instance, MAKEINTRESOURCE(IDI_APP_ICON));
     return RegisterClassExW(&wcex);
 }
 
@@ -350,9 +351,9 @@ BOOL InitInstance(HINSTANCE instance, int cmd_show) {
     if (!g_hwnd)
         return FALSE;   // hidden message-only window
 
-    // Same SHELL32 built-in icons as the original project. :-)
-    g_icon_enabled  = LoadIcon(GetModuleHandleW(L"SHELL32.dll"), MAKEINTRESOURCE(246)); // blue play
-    g_icon_disabled = LoadIcon(GetModuleHandleW(L"SHELL32.dll"), MAKEINTRESOURCE(200)); // red stop
+    // Custom project icons (defined in resources.h / InternalKeyfreeze.rc)
+    g_icon_enabled  = LoadIcon(instance, MAKEINTRESOURCE(IDI_TRAY_ENABLED)); // keyboard active
+    g_icon_disabled = LoadIcon(instance, MAKEINTRESOURCE(IDI_TRAY_FROZEN));  // keyboard frozen
 
     ZeroMemory(&g_nid, sizeof(g_nid));
     g_nid.cbSize           = sizeof(g_nid);

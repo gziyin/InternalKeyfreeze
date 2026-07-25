@@ -2,6 +2,8 @@
 
 **中文** | [English](README.en.md)
 
+<p align="center"><img src="assets/icon-256.png" width="140" alt="InternalKeyfreeze 图标"></p>
+
 冻结**笔记本内置键盘**、不影响**外置 USB / 蓝牙键盘**的 Windows 托盘小工具。
 仿照 [OpenKeyfreeze](https://github.com/sukibaby/OpenKeyfreeze)，但把"一刀切锁全部键盘"改成了"只锁内置键盘"。
 
