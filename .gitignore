@@ -2,6 +2,7 @@
 bin/InternalKeyfreeze.ini
 
 # 编译中间文件
+build/
 src/ud.rc
 src/ud.res
 *.obj
@@ -11,7 +12,12 @@ src/ud.res
 *.ilk
 *.exp
 
-# IDE / 编辑器
+# 构建输出（二进制不进仓库）
+bin/*.exe
+bin/*.dll
+
+# IDE / 编辑器 / AI 助手工作区
+.qoder/
 .vs/
 .vscode/
 *.user

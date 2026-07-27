@@ -64,7 +64,9 @@ InternalKeyfreeze\
 ├─ README.md                    This file (Chinese)
 ├─ README.en.md                 English readme
 ├─ LICENSE                      MIT license (project's own code)
-├─ build_icons.bat              Regenerate icon assets (run before building)
+├─ tools\                       Build scripts (see "Building from Source")
+│   ├─ build_icons.bat          Regenerate icon assets (assets/*.ico)
+│   └─ build.bat                One-click build: icons → resource → link exe
 ├─ 安装.bat                     One-click install (double-click, auto-elevates)
 ├─ 卸载.bat                     One-click uninstall (double-click, auto-elevates)
 ├─ Interception.zip             Interception v1.0.1 official release (archive)
@@ -91,7 +93,7 @@ InternalKeyfreeze\
 
 ### Option 1: One-click install (recommended, for regular users)
 
-Download `InternalKeyfreeze-v2.0.zip` from [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases), extract, then:
+Download `InternalKeyfreeze-v2.1.zip` from [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases), extract, then:
 
 1. **Double-click `安装.bat`** (UAC prompt will appear, confirm it)
 2. **Reboot**
@@ -124,11 +126,12 @@ Double-click `driver\UninstallDriver.exe` (UAC prompt) → it automatically term
 
 ## Building from Source
 
-Main program (no libraries to link — the dll is loaded dynamically at runtime). The icon is embedded into the exe via the Windows resource script `src/InternalKeyfreeze.rc`; run `build_icons.bat` first to generate `assets/*.ico` (once, or whenever you change the icon).
+Main program (no libraries to link — the dll is loaded dynamically at runtime). The icon is embedded into the exe via the Windows resource script `src/InternalKeyfreeze.rc`; run `tools/build_icons.bat` first to generate `assets/*.ico` (once, or whenever you change the icon). Alternatively, run `tools/build.bat` to do everything in one step (icons → resource compile → link exe).
 
 ```bat
 :: 1) Generate icon assets (first time / after changing the icon)
-build_icons.bat
+tools\build_icons.bat
+::    or one-shot: tools\build.bat  (runs steps 1→3 for you)
 
 :: 2) MSVC — compile resource and link
 rc src\InternalKeyfreeze.rc

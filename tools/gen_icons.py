@@ -1,39 +1,24 @@
-@echo off
-setlocal
-set "ROOT=%~dp0"
-set "ASSETS=%ROOT%assets"
-set "SITE=%ROOT%.workbuddy\iconbuild\site"
-set "TMPPY=%TEMP%\ikf_gen_icons.py"
-
-:: Locate a Python 3 interpreter
-set "PY="
-where py >nul 2>nul && set "PY=py -3"
-if not defined PY ( where python >nul 2>nul && set "PY=python" )
-if not defined PY ( where python3 >nul 2>nul && set "PY=python3" )
-if not defined PY ( echo [ERR] Python 3 not found on PATH. & exit /b 1 )
-
-:: Ensure Pillow is available in the isolated site directory
-if not exist "%SITE%\PIL" (
-    echo [*] Installing Pillow into %SITE% ...
-    %PY% -m pip install --target "%SITE%" Pillow 2>&1 || exit /b 1
-)
-
-:: Write the generator (indentation preserved via PowerShell here-string)
-powershell -NoProfile -Command "Set-Content -Path '%TMPPY%' -Encoding utf8 @'
 import os, sys, math
 from PIL import Image, ImageEnhance, ImageDraw
-SITE = os.environ['IKF_SITE']
-ASSETS = os.environ['IKF_ASSETS']
+
+HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.abspath(os.path.join(HERE, '..'))
+SITE = os.environ.get('IKF_SITE') or os.path.join(ROOT, '.workbuddy', 'iconbuild', 'site')
+ASSETS = os.environ.get('IKF_ASSETS') or os.path.join(ROOT, 'assets')
 sys.path.insert(0, SITE)
+
 master = Image.open(os.path.join(ASSETS, 'icon-master.png')).convert('RGBA')
+
 
 def rz(img, s):
     return img.resize((s, s), Image.LANCZOS)
+
 
 def save_ico(src_large, name, sizes):
     path = os.path.join(ASSETS, name)
     src_large.save(path, format='ICO', sizes=[(s, s) for s in sizes])
     print(name, sizes)
+
 
 def frozen(img):
     im = img.copy()
@@ -60,6 +45,7 @@ def frozen(img):
             d.line([(bx, by), (ex, ey)], fill=white, width=w)
     return im
 
+
 app_sizes = [16, 24, 32, 48, 64, 128, 256]
 save_ico(master, 'app-icon.ico', app_sizes)
 tray_sizes = [16, 20, 24, 32, 48]
@@ -68,10 +54,3 @@ save_ico(frozen(rz(master, 256)), 'tray-frozen.ico', tray_sizes)
 rz(master, 256).save(os.path.join(ASSETS, 'icon-256.png'))
 rz(master, 512).save(os.path.join(ASSETS, 'icon-512.png'))
 print('readme pngs done')
-'@"
-
-set "IKF_SITE=%SITE%"
-set "IKF_ASSETS=%ASSETS%"
-%PY% "%TMPPY%"
-if errorlevel 1 ( echo [ERR] icon generation failed. & exit /b 1 )
-echo [OK] icons regenerated in %ASSETS%

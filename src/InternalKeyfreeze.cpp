@@ -49,7 +49,14 @@
 #include <windows.h>
 #include <shellapi.h>
 #include <strsafe.h>
+#include <atomic>
 #include "resources.h"
+#include "logger.h"
+
+// Pull in constants from the Interception SDK header (INTERCEPTION_MAX_KEYBOARD etc.)
+// INTERCEPTION_STATIC avoids __declspec(dllimport) since we load the DLL dynamically.
+#define INTERCEPTION_STATIC
+#include "../sdk/library/interception.h"
 
 #define MAX_LOADSTRING   100
 #define WM_TRAYICON      (WM_USER + 1)
@@ -57,7 +64,7 @@
 #define IDM_EXIT         1001
 #define IDM_LEARN        1002
 #define TRAY_UID         1
-#define MAX_KBD_DEVICES  10
+#define MAX_KBD_DEVICES  INTERCEPTION_MAX_KEYBOARD
 
 // ---------------------------------------------------------------------------
 // Interception ABI - mirrors interception.h, loaded dynamically so the app
@@ -99,7 +106,10 @@ static FN_get_hwid        p_get_hardware_id;
 
 static bool LoadInterception() {
     g_dll = LoadLibraryW(L"interception.dll");
-    if (!g_dll) return false;
+    if (!g_dll) {
+        Log::Error(L"LoadLibrary(interception.dll) failed, err=%lu", GetLastError());
+        return false;
+    }
     p_create_context    = (FN_create_context) GetProcAddress(g_dll, "interception_create_context");
     p_destroy_context   = (FN_destroy_context)GetProcAddress(g_dll, "interception_destroy_context");
     p_set_filter        = (FN_set_filter)     GetProcAddress(g_dll, "interception_set_filter");
@@ -108,8 +118,13 @@ static bool LoadInterception() {
     p_receive           = (FN_receive)        GetProcAddress(g_dll, "interception_receive");
     p_send              = (FN_send)           GetProcAddress(g_dll, "interception_send");
     p_get_hardware_id   = (FN_get_hwid)       GetProcAddress(g_dll, "interception_get_hardware_id");
-    return p_create_context && p_destroy_context && p_set_filter && p_is_keyboard &&
+    bool ok = p_create_context && p_destroy_context && p_set_filter && p_is_keyboard &&
            p_wait_with_timeout && p_receive && p_send && p_get_hardware_id;
+    if (ok)
+        Log::Info(L"interception.dll loaded, all 8 exports resolved");
+    else
+        Log::Error(L"interception.dll loaded but some exports missing");
+    return ok;
 }
 
 // ---------------------------------------------------------------------------
@@ -126,9 +141,9 @@ HANDLE g_mutex = NULL;
 
 IC_Context     g_ctx = NULL;
 HANDLE         g_worker = NULL;
-volatile bool  g_stop_worker = false;
-volatile bool  g_locked = false;      // swallow built-in keystrokes
-volatile bool  g_learning = false;    // next built-in keystroke identifies it
+std::atomic<bool> g_stop_worker{false};
+std::atomic<bool> g_locked{false};      // swallow built-in keystrokes
+std::atomic<bool> g_learning{false};    // next built-in keystroke identifies it
 
 WCHAR g_internal_hwid[256] = L"";                 // learned built-in keyboard
 WCHAR g_device_hwid[MAX_KBD_DEVICES + 1][256];    // per-device hwid cache
@@ -169,6 +184,7 @@ static DWORD WINAPI WorkerProc(LPVOID) {
                 // Not USB -> treat as the built-in keyboard.
                 StringCchCopyW(g_internal_hwid, 256, hwid);
                 g_learning = false;
+                Log::Info(L"Learning success: internal keyboard hwid=%s", hwid);
                 PostMessageW(g_hwnd, WM_APP_LEARNED, 0, 0);
                 continue;                   // swallow the learning keystroke
             }
@@ -187,8 +203,10 @@ static DWORD WINAPI WorkerProc(LPVOID) {
 
 static bool StartWorker() {
     g_ctx = p_create_context();
-    if (!g_ctx)
-        return false;                       // driver not installed
+    if (!g_ctx) {
+        Log::Error(L"interception_create_context failed - driver not installed?");
+        return false;
+    }
     p_set_filter(g_ctx, p_is_keyboard, IC_FILTER_KEY_ALL);
     g_stop_worker = false;
     g_worker = CreateThread(NULL, 0, WorkerProc, NULL, 0, NULL);
@@ -196,6 +214,7 @@ static bool StartWorker() {
         // The worker forwards every keystroke; give it a small scheduling
         // edge so input latency stays flat even under heavy system load.
         SetThreadPriority(g_worker, THREAD_PRIORITY_ABOVE_NORMAL);
+        Log::Info(L"Worker thread started (priority ABOVE_NORMAL)");
     }
     return g_worker != NULL;
 }
@@ -211,6 +230,7 @@ static void StopWorker() {
         p_destroy_context(g_ctx);           // driver auto-restores input
         g_ctx = NULL;
     }
+    Log::Info(L"Worker stopped, driver context destroyed");
 }
 
 // ---------------------------------------------------------------------------
@@ -228,6 +248,10 @@ static void LoadConfig() {
     ConfigPath(path, ARRAYSIZE(path));
     GetPrivateProfileStringW(L"keyboard", L"hwid", L"",
                              g_internal_hwid, ARRAYSIZE(g_internal_hwid), path);
+    if (g_internal_hwid[0])
+        Log::Info(L"Config loaded: hwid=%s", g_internal_hwid);
+    else
+        Log::Info(L"Config loaded: no saved hwid (first run)");
 }
 
 static void SaveConfig() {
@@ -259,10 +283,12 @@ static void StartLearning(HWND hwnd) {
 
 static void ToggleInternalKeyboard(HWND hwnd) {
     if (!g_locked && g_internal_hwid[0] == 0) {
+        Log::Info(L"Toggle requested but no hwid learned - entering learning mode");
         StartLearning(hwnd);                // first use: must learn first
         return;
     }
     g_locked = !g_locked;
+    Log::Info(L"Keyboard %s", g_locked.load() ? L"FROZEN" : L"UNFROZEN");
     UpdateTray();
 }
 
@@ -281,6 +307,9 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev_instance,
                     L"InternalKeyfreeze", MB_OK | MB_ICONEXCLAMATION);
         return 1;
     }
+
+    Log::Init();
+    Log::Info(L"=== InternalKeyfreeze v2 starting ===");
 
     if (!LoadInterception()) {
         MessageBoxW(NULL,
@@ -312,6 +341,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev_instance,
         return 1;
     }
 
+    Log::Info(L"Entering message loop");
     MSG msg;
     while (GetMessage(&msg, nullptr, 0, 0)) {
         TranslateMessage(&msg);
@@ -323,6 +353,8 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev_instance,
         ReleaseMutex(g_mutex);
         CloseHandle(g_mutex);
     }
+    Log::Info(L"=== InternalKeyfreeze exiting normally ===");
+    Log::Shutdown();
     return (int)msg.wParam;
 }
 

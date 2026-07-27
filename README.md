@@ -64,7 +64,9 @@ InternalKeyfreeze\
 ├─ README.md                    本文件（中文）
 ├─ README.en.md                 英文版 readme
 ├─ LICENSE                      MIT 许可证（本项目代码）
-├─ build_icons.bat              重新生成图标资源（编译前运行，详见下方）
+├─ tools\                       构建脚本（见「重新编译」，不进根目录）
+│   ├─ build_icons.bat          重新生成图标资源 assets/*.ico（换图标时运行）
+│   └─ build.bat                一键编译：生成图标 → 资源编译 → 链接 exe
 ├─ 安装.bat                     一键安装（双击即可，自动提权）
 ├─ 卸载.bat                     一键卸载（双击即可，自动提权）
 ├─ Interception.zip             Interception v1.0.1 官方发布包（存档）
@@ -91,7 +93,7 @@ InternalKeyfreeze\
 
 ### 方式一：一键安装（推荐，普通用户用这个）
 
-从 [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases) 下载 `InternalKeyfreeze-v2.0.zip`，解压后：
+从 [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases) 下载 `InternalKeyfreeze-v2.1.zip`，解压后：
 
 1. **双击 `安装.bat`**（会自动弹 UAC，确认即可）
 2. **重启电脑**
@@ -125,11 +127,12 @@ InternalKeyfreeze、调用官方安装器卸载驱动，并询问是否立即重
 
 ## 重新编译
 
-主程序（无需链接任何库，dll 运行时动态加载）。图标通过 Windows 资源脚本 `src/InternalKeyfreeze.rc` 嵌入 exe，需先用 `build_icons.bat` 生成 `assets/*.ico`（首次克隆或想换图标时运行一次）。
+主程序（无需链接任何库，dll 运行时动态加载）。图标通过 Windows 资源脚本 `src/InternalKeyfreeze.rc` 嵌入 exe，由 `tools/build_icons.bat` 生成 `assets/*.ico`（首次克隆或想换图标时运行一次）；也可直接运行 `tools/build.bat` 一键完成「生成图标 → 编译资源 → 链接 exe」。
 
 ```bat
 :: 1) 生成图标资源（首次 / 修改图标后）
-build_icons.bat
+tools\build_icons.bat
+::    或一步到位：tools\build.bat  （自动完成 1→2→3）
 
 :: 2) MSVC —— 编译资源并链接
 rc src\InternalKeyfreeze.rc
