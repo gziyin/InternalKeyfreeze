@@ -16,6 +16,7 @@
 #define WM_TRAYICON      (WM_USER + 1)
 #define IDM_EXIT         1001
 #define IDM_LEARN        1002
+#define IDM_AUTOSTART    1003
 #define TRAY_UID         1
 
 // ---- Global UI state ----

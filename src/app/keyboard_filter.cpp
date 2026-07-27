@@ -123,9 +123,9 @@ static DWORD WINAPI WorkerProc(LPVOID) {
                             PostMessageW(g_notify_hwnd, WM_APP_MULTI_CAND, 0, 0);
                     } else if (g_candidate_count == 1) {
                         // Only one candidate: auto-select it
-                        StringCchCopyW(g_internal_hwid, 256, g_candidates[0].hwid);
+                        AddFrozenDevice(g_candidates[0].hwid);
                         Log::Info(L"Learning timeout: auto-selected single candidate hwid=%s",
-                                  g_internal_hwid);
+                                  g_candidates[0].hwid);
                         if (g_notify_hwnd)
                             PostMessageW(g_notify_hwnd, WM_APP_LEARNED, 0, 0);
                     }
@@ -154,7 +154,7 @@ static DWORD WINAPI WorkerProc(LPVOID) {
 
                 if (score >= 80) {
                     // High confidence: immediately select this device
-                    StringCchCopyW(g_internal_hwid, 256, hwid);
+                    AddFrozenDevice(hwid);
                     g_learning = false;
                     g_was_learning = false;
                     Log::Info(L"Learning success (score=%d): internal keyboard hwid=%s",
@@ -172,8 +172,7 @@ static DWORD WINAPI WorkerProc(LPVOID) {
             // Forward the keystroke (don't swallow during collection phase)
         }
 
-        bool is_internal = (g_internal_hwid[0] != 0 &&
-                            _wcsicmp(hwid, g_internal_hwid) == 0);
+        bool is_internal = IsDeviceFrozen(hwid);
         if (is_internal && g_locked)
             continue;                       // frozen: swallow the keystroke
 

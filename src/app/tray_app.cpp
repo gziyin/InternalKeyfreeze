@@ -6,6 +6,7 @@
 #include "config.h"
 #include "logger.h"
 #include "hotkey.h"
+#include "autostart.h"
 #include "../resources/resources.h"
 #include <strsafe.h>
 
@@ -43,7 +44,7 @@ void StartLearning(HWND hwnd) {
 }
 
 void ToggleInternalKeyboard(HWND hwnd) {
-    if (!g_locked && g_internal_hwid[0] == 0) {
+    if (!g_locked && g_frozen_device_count == 0) {
         Log::Info(L"Toggle requested but no hwid learned - entering learning mode");
         StartLearning(hwnd);                // first use: must learn first
         return;
@@ -65,11 +66,11 @@ static void ShowCandidateDialog(HWND hwnd) {
 
         if (MessageBoxW(hwnd, msg, L"\x8bbe\x5907\x9009\x62e9",
                         MB_YESNO | MB_ICONQUESTION) == IDYES) {
-            StringCchCopyW(g_internal_hwid, 256, g_candidates[i].hwid);
+            AddFrozenDevice(g_candidates[i].hwid);
             SaveConfig();
             g_locked = true;
             UpdateTray();
-            Log::Info(L"User selected candidate #%d: hwid=%s", i + 1, g_internal_hwid);
+            Log::Info(L"User selected candidate #%d: hwid=%s", i + 1, g_candidates[i].hwid);
             MessageBoxW(hwnd,
                 L"\x5df2\x8bc6\x522b\x5185\x7f6e\x952e\x76d8\x5e76\x7acb\x5373\x51bb\x7ed3\xff01\n\n"
                 L"\x4ee5\x540e\x5de6\x952e\x6258\x76d8\x56fe\x6807\x6216 Ctrl+Shift+K \x5373\x53ef\x5207\x6362\x3002",
@@ -143,6 +144,12 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM w_param, LPARAM l_param
             HMENU menu = CreatePopupMenu();
             AppendMenuW(menu, MF_STRING, IDM_LEARN, L"\x91cd\x65b0\x8bc6\x522b\x5185\x7f6e\x952e\x76d8");
             AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
+            // Autostart toggle with checkmark
+            UINT auto_flags = MF_STRING;
+            if (IsAutostartEnabled())
+                auto_flags |= MF_CHECKED;
+            AppendMenuW(menu, auto_flags, IDM_AUTOSTART, L"\x5f00\x673a\x81ea\x542f");
+            AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
             AppendMenuW(menu, MF_STRING | MF_GRAYED, 0, L"\x70ed\x952e: Ctrl+Shift+K");
             AppendMenuW(menu, MF_SEPARATOR, 0, NULL);
             AppendMenuW(menu, MF_STRING, IDM_EXIT,  L"\x9000\x51fa");
@@ -159,9 +166,13 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM w_param, LPARAM l_param
             DestroyWindow(hwnd);
         }
         else if (LOWORD(w_param) == IDM_LEARN) {
-            g_internal_hwid[0] = 0;
+            ClearFrozenDevices();
             SaveConfig();
             StartLearning(hwnd);
+        }
+        else if (LOWORD(w_param) == IDM_AUTOSTART) {
+            bool enabled = ToggleAutostart();
+            Log::Info(L"Autostart %s", enabled ? L"enabled" : L"disabled");
         }
         else {
             return DefWindowProc(hwnd, message, w_param, l_param);

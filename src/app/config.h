@@ -1,8 +1,9 @@
 // ============================================================================
 // config.h
 //
-// INI configuration read/write for the learned keyboard hardware id.
-// Will be extended in Phase 4 to support multiple devices.
+// INI configuration for frozen keyboard devices.
+// Supports multiple devices with backward-compatible migration from
+// the legacy single-hwid [keyboard] format.
 // ============================================================================
 
 #ifndef IKF_CONFIG_H
@@ -10,16 +11,38 @@
 
 #include <windows.h>
 
-// The learned built-in keyboard hardware id (shared with keyboard_filter).
-extern WCHAR g_internal_hwid[256];
+// Maximum number of frozen devices supported.
+#define MAX_FROZEN_DEVICES 8
+
+// The frozen device hardware id list (shared with keyboard_filter and tray_app).
+extern WCHAR g_frozen_hwids[MAX_FROZEN_DEVICES][256];
+extern int  g_frozen_device_count;
+
+// ---- Device list operations ----
+
+// Returns true if |hwid| is in the frozen device list (case-insensitive).
+bool IsDeviceFrozen(PCWSTR hwid);
+
+// Adds a device to the frozen list (if not already present and list not full).
+// Returns true if added, false if duplicate or full.
+bool AddFrozenDevice(PCWSTR hwid);
+
+// Removes the device at |index| from the frozen list.
+void RemoveFrozenDevice(int index);
+
+// Clears all devices from the frozen list.
+void ClearFrozenDevices();
+
+// ---- INI file operations ----
 
 // Fills |path| with the full path to InternalKeyfreeze.ini (next to the exe).
 void ConfigPath(WCHAR* path, DWORD cch);
 
-// Loads g_internal_hwid from the [keyboard] hwid= entry in the INI.
+// Loads the frozen device list from the INI file.
+// Automatically migrates from the legacy [keyboard] hwid= format.
 void LoadConfig();
 
-// Saves g_internal_hwid to the [keyboard] hwid= entry in the INI.
+// Saves the frozen device list to the INI file (new [devices] format).
 void SaveConfig();
 
 #endif // IKF_CONFIG_H
