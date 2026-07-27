@@ -16,11 +16,61 @@ std::atomic<bool> g_learning{false};
 IC_Context g_ctx = NULL;
 HANDLE     g_worker = NULL;
 
+// Device candidates collected during learning
+DeviceCandidate g_candidates[MAX_CANDIDATES];
+int g_candidate_count = 0;
+
 // Per-device hardware id cache
 static WCHAR g_device_hwid[MAX_KBD_DEVICES + 1][256];
 
 // Window to notify when learning completes (set by StartWorker)
 static HWND g_notify_hwnd = NULL;
+
+// Learning state (worker-thread only)
+static DWORD g_learning_start = 0;  // GetTickCount() when learning began
+static bool g_was_learning = false;
+static const DWORD LEARNING_TIMEOUT_MS = 10000;  // 10 seconds
+
+// ---------------------------------------------------------------------------
+// Device identification: score how likely a hwid is the built-in keyboard.
+//
+// Positive patterns (built-in):
+//   ACPI\...     - PS/2 / ACPI enumerated (most laptop built-in keyboards)
+//   PNP03xx      - PS/2 keyboard PnP device ID
+//   MSFT0001     - ACPI virtual keyboard on modern laptops
+//
+// Negative patterns (external):
+//   VID_         - USB vendor ID (USB keyboard)
+//   BTHENUM      - Bluetooth enumerator
+//   HID\         - HID-over-USB (usually external)
+//
+// Returns 0-100. >=80 is high confidence; 0 is definitely external.
+// ---------------------------------------------------------------------------
+int DeviceScore(PCWSTR hwid) {
+    if (!hwid || !hwid[0]) return 0;
+
+    // --- Negative patterns (external keyboards) ---
+    if (wcsstr(hwid, L"VID_"))    return 0;   // USB keyboard
+    if (wcsstr(hwid, L"BTHENUM")) return 0;   // Bluetooth keyboard
+    if (wcsstr(hwid, L"bthenum")) return 0;   // (case-insensitive)
+
+    // --- Positive patterns (built-in keyboards) ---
+    int score = 30;  // base: unknown but not obviously external
+
+    // Case-insensitive prefix/pattern checks
+    if (_wcsnicmp(hwid, L"ACPI\\", 5) == 0)   score += 50;
+    if (wcsstr(hwid, L"PNP03"))                score += 20;
+    if (wcsstr(hwid, L"pnp03"))                score += 20;
+    if (wcsstr(hwid, L"MSFT0001"))             score += 20;
+
+    // HID\ without ACPI prefix is suspicious (likely USB-HID)
+    if (_wcsnicmp(hwid, L"HID\\", 4) == 0 && _wcsnicmp(hwid, L"ACPI\\", 5) != 0)
+        score -= 15;
+
+    if (score > 100) score = 100;
+    if (score < 0)   score = 0;
+    return score;
+}
 
 // Cached hardware id lookup (devices are stable for the process lifetime).
 PCWSTR DeviceHwid(IC_Device dev) {
@@ -34,14 +84,55 @@ PCWSTR DeviceHwid(IC_Device dev) {
     return g_device_hwid[dev];
 }
 
+// Check if a hwid is already in the candidates list.
+static bool IsCandidateKnown(PCWSTR hwid) {
+    for (int i = 0; i < g_candidate_count; i++) {
+        if (_wcsicmp(g_candidates[i].hwid, hwid) == 0)
+            return true;
+    }
+    return false;
+}
+
+// Add a device to the candidates list (if not already present).
+static void AddCandidate(PCWSTR hwid, int score) {
+    if (g_candidate_count >= MAX_CANDIDATES) return;
+    if (IsCandidateKnown(hwid)) return;
+    StringCchCopyW(g_candidates[g_candidate_count].hwid, 256, hwid);
+    g_candidates[g_candidate_count].score = score;
+    g_candidate_count++;
+    Log::Info(L"Candidate #%d: hwid=%s score=%d", g_candidate_count, hwid, score);
+}
+
 // ---------------------------------------------------------------------------
 // Worker thread: the interception loop. Runs for the whole app lifetime.
 // ---------------------------------------------------------------------------
 static DWORD WINAPI WorkerProc(LPVOID) {
     while (!g_stop_worker) {
         IC_Device dev = p_wait_with_timeout(g_ctx, 200);
-        if (dev == 0)
-            continue;                       // timeout -> re-check stop flag
+        if (dev == 0) {
+            // Timeout: check if learning has expired
+            if (g_learning && g_was_learning) {
+                if (GetTickCount() - g_learning_start > LEARNING_TIMEOUT_MS) {
+                    // Learning timeout: notify UI of collected candidates
+                    g_learning = false;
+                    g_was_learning = false;
+                    if (g_candidate_count > 1) {
+                        Log::Info(L"Learning timeout: %d candidates collected, requesting user selection",
+                                  g_candidate_count);
+                        if (g_notify_hwnd)
+                            PostMessageW(g_notify_hwnd, WM_APP_MULTI_CAND, 0, 0);
+                    } else if (g_candidate_count == 1) {
+                        // Only one candidate: auto-select it
+                        StringCchCopyW(g_internal_hwid, 256, g_candidates[0].hwid);
+                        Log::Info(L"Learning timeout: auto-selected single candidate hwid=%s",
+                                  g_internal_hwid);
+                        if (g_notify_hwnd)
+                            PostMessageW(g_notify_hwnd, WM_APP_LEARNED, 0, 0);
+                    }
+                }
+            }
+            continue;
+        }
 
         IC_Stroke raw;
         if (p_receive(g_ctx, dev, &raw, 1) <= 0)
@@ -50,16 +141,35 @@ static DWORD WINAPI WorkerProc(LPVOID) {
         PCWSTR hwid = DeviceHwid(dev);
 
         if (g_learning) {
-            if (hwid[0] && wcsstr(hwid, L"VID_") == NULL) {
-                // Not USB -> treat as the built-in keyboard.
-                StringCchCopyW(g_internal_hwid, 256, hwid);
-                g_learning = false;
-                Log::Info(L"Learning success: internal keyboard hwid=%s", hwid);
-                if (g_notify_hwnd)
-                    PostMessageW(g_notify_hwnd, WM_APP_LEARNED, 0, 0);
-                continue;                   // swallow the learning keystroke
+            // Detect transition into learning mode
+            if (!g_was_learning) {
+                g_was_learning = true;
+                g_learning_start = GetTickCount();
+                g_candidate_count = 0;
+                Log::Info(L"Learning mode started");
             }
-            // User pressed an external keyboard: ignore & forward it.
+
+            if (hwid[0]) {
+                int score = DeviceScore(hwid);
+
+                if (score >= 80) {
+                    // High confidence: immediately select this device
+                    StringCchCopyW(g_internal_hwid, 256, hwid);
+                    g_learning = false;
+                    g_was_learning = false;
+                    Log::Info(L"Learning success (score=%d): internal keyboard hwid=%s",
+                              score, hwid);
+                    if (g_notify_hwnd)
+                        PostMessageW(g_notify_hwnd, WM_APP_LEARNED, 0, 0);
+                    continue;                   // swallow the learning keystroke
+                }
+
+                if (score > 0) {
+                    // Low-medium confidence: add to candidates
+                    AddCandidate(hwid, score);
+                }
+            }
+            // Forward the keystroke (don't swallow during collection phase)
         }
 
         bool is_internal = (g_internal_hwid[0] != 0 &&
