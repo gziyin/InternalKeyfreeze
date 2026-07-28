@@ -66,6 +66,7 @@ InternalKeyfreeze\
 ├─ LICENSE                      MIT 许可证（本项目代码）
 ├─ tools\                       构建脚本（见「重新编译」，不进根目录）
 │   ├─ build_icons.bat          重新生成图标资源 assets/*.ico（换图标时运行）
+│   ├─ gen_icons.py             图标生成脚本（被 build_icons.bat 调用，依赖 Pillow）
 │   └─ build.bat                一键编译：生成图标 → 资源编译 → 链接 exe
 ├─ 安装.bat                     一键安装（双击即可，自动提权）
 ├─ 卸载.bat                     一键卸载（双击即可，自动提权）
@@ -80,12 +81,23 @@ InternalKeyfreeze\
 │   ├─ UninstallDriver.exe      卸载驱动（双击，弹 UAC）
 │   └─ install-interception.exe 官方驱动安装器（装/卸共用，被上面两个调用）
 ├─ src\
-│   ├─ InternalKeyfreeze.cpp    主程序源码
-│   ├─ InternalKeyfreeze.rc     Windows 资源脚本（图标定义）
-│   ├─ resources.h              资源 ID 头文件
-│   ├─ UninstallDriver.cpp      卸载器源码
-│   ├─ UninstallDriver.manifest 卸载器 UAC manifest
-│   └─ legacy\                  v1 存档（SetupAPI 禁用方案，本机不可用）
+│   ├─ app\                     主程序源码（v2 模块化）
+│   │   ├─ main.cpp             入口 + 消息循环
+│   │   ├─ tray_app.*           托盘 UI 与菜单
+│   │   ├─ keyboard_filter.*    Worker 线程 + 设备识别
+│   │   ├─ interception_loader.* DLL 动态加载
+│   │   ├─ config.*             INI 读写（多设备）
+│   │   ├─ hotkey.*             全局热键 Ctrl+Shift+K
+│   │   ├─ autostart.*          开机自启管理
+│   │   └─ logger.h             轻量日志（%APPDATA%\InternalKeyfreeze\app.log）
+│   ├─ uninstall\               卸载工具
+│   │   ├─ UninstallDriver.cpp
+│   │   └─ UninstallDriver.manifest
+│   └─ resources\               Windows 资源
+│       ├─ resources.h          资源 ID 头文件
+│       └─ InternalKeyfreeze.rc 资源脚本（图标定义）
+├─ legacy\                      v1 存档（SetupAPI 禁用方案，本机不可用）
+├─ .github\workflows\build.yml  CI/CD（GitHub Actions 构建与发版）
 └─ sdk\                         Interception SDK（头文件 / lib / 许可证 / 示例）
 ```
 
@@ -93,7 +105,7 @@ InternalKeyfreeze\
 
 ### 方式一：一键安装（推荐，普通用户用这个）
 
-从 [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases) 下载 `InternalKeyfreeze-v2.1.zip`，解压后：
+从 [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases) 下载最新版（如 `InternalKeyfreeze-v2.0.0.zip`），解压后：
 
 1. **双击 `安装.bat`**（会自动弹 UAC，确认即可）
 2. **重启电脑**
@@ -110,8 +122,10 @@ InternalKeyfreeze\
 1. 运行 `bin\InternalKeyfreeze.exe`（无需管理员）
 2. 首次左键托盘图标 → 提示"请在内置键盘上按任意键" → 按一下笔记本键盘任意键
    → 硬件 ID 记录到 `bin\InternalKeyfreeze.ini`，并立即冻结
-3. 之后**左键**托盘图标 = 冻结 / 恢复切换；**右键** = 重新识别 / 退出
-4. 程序退出或崩溃时驱动自动恢复输入，内置键盘永远不会被锁死；Ctrl+Alt+Del 始终可用
+3. 之后**左键**托盘图标 = 冻结 / 恢复切换；**右键** = 重新识别 / 开机自启 / 退出
+4. **全局热键 Ctrl+Shift+K** 也可随时切换冻结状态（无需切到托盘）
+5. 支持同时冻结多台内置键盘设备：右键"重新识别"可学习并追加设备，配置保存在 INI `[devices]` 节
+6. 程序退出或崩溃时驱动自动恢复输入，内置键盘永远不会被锁死；Ctrl+Alt+Del 始终可用
 
 ## 卸载
 
@@ -127,7 +141,7 @@ InternalKeyfreeze、调用官方安装器卸载驱动，并询问是否立即重
 
 ## 重新编译
 
-主程序（无需链接任何库，dll 运行时动态加载）。图标通过 Windows 资源脚本 `src/InternalKeyfreeze.rc` 嵌入 exe，由 `tools/build_icons.bat` 生成 `assets/*.ico`（首次克隆或想换图标时运行一次）；也可直接运行 `tools/build.bat` 一键完成「生成图标 → 编译资源 → 链接 exe」。
+主程序（无需链接任何库，dll 运行时动态加载）。图标通过 Windows 资源脚本 `src/resources/InternalKeyfreeze.rc` 嵌入 exe，由 `tools/build_icons.bat` 生成 `assets/*.ico`（首次克隆或想换图标时运行一次）；也可直接运行 `tools/build.bat` 一键完成「生成图标 → 编译资源 → 链接 exe」。
 
 ```bat
 :: 1) 生成图标资源（首次 / 修改图标后）
@@ -135,12 +149,18 @@ tools\build_icons.bat
 ::    或一步到位：tools\build.bat  （自动完成 1→2→3）
 
 :: 2) MSVC —— 编译资源并链接
-rc src\InternalKeyfreeze.rc
-cl /EHsc /W4 src\InternalKeyfreeze.cpp src\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
+rc /I src\resources /I src\app /I sdk\library src\resources\InternalKeyfreeze.rc
+cl /EHsc /W4 /I src\app /I src\resources /I sdk\library ^
+   src\app\main.cpp src\app\tray_app.cpp src\app\keyboard_filter.cpp ^
+   src\app\interception_loader.cpp src\app\config.cpp src\app\hotkey.cpp src\app\autostart.cpp ^
+   src\resources\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
 
 :: 3) MinGW-w64 —— 资源编译为 COFF 并链接
-windres --output-format=coff -i src\InternalKeyfreeze.rc -o build\InternalKeyfreeze.res.o
-g++ -O2 -municode -mwindows src\InternalKeyfreeze.cpp build\InternalKeyfreeze.res.o -o bin\InternalKeyfreeze.exe
+windres --output-format=coff -I src\resources -i src\resources\InternalKeyfreeze.rc -o build\InternalKeyfreeze.res.o
+g++ -O2 -municode -mwindows -std=c++17 -I sdk\library -I src\app -I src\resources ^
+    src\app\main.cpp src\app\tray_app.cpp src\app\keyboard_filter.cpp src\app\interception_loader.cpp ^
+    src\app\config.cpp src\app\hotkey.cpp src\app\autostart.cpp ^
+    build\InternalKeyfreeze.res.o -o bin\InternalKeyfreeze.exe
 ```
 
 > `build\` 为编译中间目录（已在 `.gitignore` 中忽略），不会进入仓库。
@@ -148,10 +168,10 @@ g++ -O2 -municode -mwindows src\InternalKeyfreeze.cpp build\InternalKeyfreeze.re
 卸载器（需内嵌 manifest，MinGW 示例）：
 
 ```bat
-cd src
+cd src\uninstall
 printf '1 24 "UninstallDriver.manifest"\n' > ud.rc
 windres ud.rc -O coff -o ud.res
-g++ -O2 -municode -mwindows UninstallDriver.cpp ud.res -o ..\driver\UninstallDriver.exe
+g++ -O2 -municode -mwindows UninstallDriver.cpp ud.res -o ..\..\driver\UninstallDriver.exe
 del ud.rc ud.res
 ```
 

@@ -66,6 +66,7 @@ InternalKeyfreeze\
 ├─ LICENSE                      MIT license (project's own code)
 ├─ tools\                       Build scripts (see "Building from Source")
 │   ├─ build_icons.bat          Regenerate icon assets (assets/*.ico)
+│   ├─ gen_icons.py             Icon generation script (called by build_icons.bat, needs Pillow)
 │   └─ build.bat                One-click build: icons → resource → link exe
 ├─ 安装.bat                     One-click install (double-click, auto-elevates)
 ├─ 卸载.bat                     One-click uninstall (double-click, auto-elevates)
@@ -80,12 +81,23 @@ InternalKeyfreeze\
 │   ├─ UninstallDriver.exe      Uninstall driver (double-click, UAC prompt)
 │   └─ install-interception.exe Official driver installer (used by both above)
 ├─ src\
-│   ├─ InternalKeyfreeze.cpp    Main program source
-│   ├─ InternalKeyfreeze.rc     Windows resource script (icon definitions)
-│   ├─ resources.h              Resource ID header
-│   ├─ UninstallDriver.cpp      Uninstaller source
-│   ├─ UninstallDriver.manifest Uninstaller UAC manifest
-│   └─ legacy\                  v1 archive (SetupAPI disable approach, unusable on this machine)
+│   ├─ app\                     Main program source (v2 modular)
+│   │   ├─ main.cpp             Entry + message loop
+│   │   ├─ tray_app.*           Tray UI & menu
+│   │   ├─ keyboard_filter.*    Worker thread + device identification
+│   │   ├─ interception_loader.* DLL dynamic loading
+│   │   ├─ config.*             INI read/write (multi-device)
+│   │   ├─ hotkey.*             Global hotkey Ctrl+Shift+K
+│   │   ├─ autostart.*          Autostart management
+│   │   └─ logger.h             Lightweight logger (%APPDATA%\InternalKeyfreeze\app.log)
+│   ├─ uninstall\               Uninstaller
+│   │   ├─ UninstallDriver.cpp
+│   │   └─ UninstallDriver.manifest
+│   └─ resources\               Windows resources
+│       ├─ resources.h          Resource ID header
+│       └─ InternalKeyfreeze.rc Resource script (icon definitions)
+├─ legacy\                      v1 archive (SetupAPI disable approach, unusable on this machine)
+├─ .github\workflows\build.yml  CI/CD (GitHub Actions build & release)
 └─ sdk\                         Interception SDK (headers / lib / licenses / samples)
 ```
 
@@ -93,7 +105,7 @@ InternalKeyfreeze\
 
 ### Option 1: One-click install (recommended, for regular users)
 
-Download `InternalKeyfreeze-v2.1.zip` from [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases), extract, then:
+Download the latest release (e.g. `InternalKeyfreeze-v2.0.0.zip`) from [GitHub Release](https://github.com/gziyin/InternalKeyfreeze/releases), extract, then:
 
 1. **Double-click `安装.bat`** (UAC prompt will appear, confirm it)
 2. **Reboot**
@@ -110,8 +122,10 @@ The install script automatically: installs the driver → copies files to `C:\Pr
 1. Run `bin\InternalKeyfreeze.exe` (no admin required)
 2. First left-click on the tray icon → prompt "press any key on the built-in keyboard" → press any key on the laptop keyboard
    → The hardware ID is saved to `bin\InternalKeyfreeze.ini` and the keyboard is frozen immediately
-3. **Left-click** the tray icon = toggle freeze/unfreeze; **right-click** = re-identify / exit
-4. If the app exits or crashes, the driver automatically restores input — the built-in keyboard can never be permanently locked; Ctrl+Alt+Del always works
+3. **Left-click** the tray icon = toggle freeze/unfreeze; **right-click** = re-identify / autostart / exit
+4. **Global hotkey Ctrl+Shift+K** also toggles freeze at any time (no need to focus the tray)
+5. Multiple built-in keyboards can be frozen at once: right-click "re-identify" to learn and add devices; config is stored in the INI `[devices]` section
+6. If the app exits or crashes, the driver automatically restores input — the built-in keyboard can never be permanently locked; Ctrl+Alt+Del always works
 
 ## Uninstall
 
@@ -126,7 +140,7 @@ Double-click `driver\UninstallDriver.exe` (UAC prompt) → it automatically term
 
 ## Building from Source
 
-Main program (no libraries to link — the dll is loaded dynamically at runtime). The icon is embedded into the exe via the Windows resource script `src/InternalKeyfreeze.rc`; run `tools/build_icons.bat` first to generate `assets/*.ico` (once, or whenever you change the icon). Alternatively, run `tools/build.bat` to do everything in one step (icons → resource compile → link exe).
+Main program (no libraries to link — the dll is loaded dynamically at runtime). The icon is embedded into the exe via the Windows resource script `src/resources/InternalKeyfreeze.rc`; run `tools/build_icons.bat` first to generate `assets/*.ico` (once, or whenever you change the icon). Alternatively, run `tools/build.bat` to do everything in one step (icons → resource compile → link exe).
 
 ```bat
 :: 1) Generate icon assets (first time / after changing the icon)
@@ -134,12 +148,18 @@ tools\build_icons.bat
 ::    or one-shot: tools\build.bat  (runs steps 1→3 for you)
 
 :: 2) MSVC — compile resource and link
-rc src\InternalKeyfreeze.rc
-cl /EHsc /W4 src\InternalKeyfreeze.cpp src\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
+rc /I src\resources /I src\app /I sdk\library src\resources\InternalKeyfreeze.rc
+cl /EHsc /W4 /I src\app /I src\resources /I sdk\library ^
+   src\app\main.cpp src\app\tray_app.cpp src\app\keyboard_filter.cpp ^
+   src\app\interception_loader.cpp src\app\config.cpp src\app\hotkey.cpp src\app\autostart.cpp ^
+   src\resources\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
 
 :: 3) MinGW-w64 — compile resource to COFF and link
-windres --output-format=coff -i src\InternalKeyfreeze.rc -o build\InternalKeyfreeze.res.o
-g++ -O2 -municode -mwindows src\InternalKeyfreeze.cpp build\InternalKeyfreeze.res.o -o bin\InternalKeyfreeze.exe
+windres --output-format=coff -I src\resources -i src\resources\InternalKeyfreeze.rc -o build\InternalKeyfreeze.res.o
+g++ -O2 -municode -mwindows -std=c++17 -I sdk\library -I src\app -I src\resources ^
+    src\app\main.cpp src\app\tray_app.cpp src\app\keyboard_filter.cpp src\app\interception_loader.cpp ^
+    src\app\config.cpp src\app\hotkey.cpp src\app\autostart.cpp ^
+    build\InternalKeyfreeze.res.o -o bin\InternalKeyfreeze.exe
 ```
 
 > `build\` is the build-intermediate directory (already in `.gitignore`) and does not enter the repo.
@@ -147,10 +167,10 @@ g++ -O2 -municode -mwindows src\InternalKeyfreeze.cpp build\InternalKeyfreeze.re
 Uninstaller (requires embedded manifest, MinGW example):
 
 ```bat
-cd src
+cd src\uninstall
 printf '1 24 "UninstallDriver.manifest"\n' > ud.rc
 windres ud.rc -O coff -o ud.res
-g++ -O2 -municode -mwindows UninstallDriver.cpp ud.res -o ..\driver\UninstallDriver.exe
+g++ -O2 -municode -mwindows UninstallDriver.cpp ud.res -o ..\..\driver\UninstallDriver.exe
 del ud.rc ud.res
 ```
 
