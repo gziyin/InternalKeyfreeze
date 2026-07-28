@@ -1,10 +1,11 @@
 // InternalKeyfreeze resource script
-// Lives in src/resources/; icon paths below are relative to this file's directory.
+// Lives in src/resources/; icon paths are relative to the project root
+// (windres resolves resource paths from the current working directory).
 #include "resources.h"
 
 // Application icon (file explorer, window title bar, shortcut)
-IDI_APP_ICON     ICON "../../assets/app-icon.ico"
+IDI_APP_ICON     ICON "assets/app-icon.ico"
 
 // Tray icons (two states)
-IDI_TRAY_ENABLED ICON "../../assets/tray-enabled.ico"
-IDI_TRAY_FROZEN  ICON "../../assets/tray-frozen.ico"
+IDI_TRAY_ENABLED ICON "assets/tray-enabled.ico"
+IDI_TRAY_FROZEN  ICON "assets/tray-frozen.ico"
