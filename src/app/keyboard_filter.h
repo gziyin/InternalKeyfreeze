@@ -18,6 +18,9 @@
 // Window messages posted by the worker thread:
 #define WM_APP_LEARNED      (WM_USER + 2)   // learning completed (single candidate)
 #define WM_APP_MULTI_CAND   (WM_USER + 3)   // multiple candidates detected
+#define WM_APP_LEARN_FAILED (WM_USER + 4)   // learning ended with no candidate
+#define WM_APP_HOTKEY_FIRED (WM_USER + 5)   // Ctrl+Shift+K seen on the frozen kbd
+#define WM_APP_DEVICES_READY (WM_USER + 6)  // present-device snapshot refreshed
 
 // Maximum number of device candidates collected during learning.
 #define MAX_CANDIDATES 8
@@ -40,6 +43,14 @@ extern HANDLE     g_worker;
 // Device candidates collected during learning (read by tray_app on WM_APP_MULTI_CAND).
 extern DeviceCandidate g_candidates[MAX_CANDIDATES];
 extern int g_candidate_count;
+
+// Present-keyboard snapshot, refreshed on demand by the worker. The UI sets
+// g_rescan_devices = true; the worker re-enumerates, fills the snapshot, clears
+// the flag, and posts WM_APP_DEVICES_READY to g_devices_dlg.
+extern WCHAR g_present_hwids[MAX_KBD_DEVICES + 1][256];
+extern int   g_present_count;
+extern std::atomic<bool> g_rescan_devices;
+extern HWND  g_devices_dlg;   // device-manager dialog window (NULL when closed)
 
 // Scores how likely a hardware id belongs to the built-in keyboard.
 // Returns 0-100 (0 = definitely external, 100 = definitely built-in).
