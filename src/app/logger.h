@@ -1,7 +1,10 @@
 // ============================================================================
 // logger.h - Lightweight file logger for InternalKeyfreeze
 //
-// Writes to %APPDATA%/InternalKeyfreeze/app.log with timestamps.
+// Writes to <exe-dir>\..\log\app.log (the exe lives in bin\, so this is the
+// project-root \log directory when run from the build tree). If that location
+// is not writable (e.g. installed under Program Files without elevation), it
+// falls back to %LOCALAPPDATA%\InternalKeyfreeze\app.log.
 // Auto-truncates when the file exceeds 1 MB.
 // Thread-safe (uses a critical section).
 //
@@ -35,52 +38,74 @@ enum Level { LEVEL_INFO, LEVEL_WARN, LEVEL_ERROR };
 
 static CRITICAL_SECTION g_cs;
 static HANDLE           g_file = INVALID_HANDLE_VALUE;
+static WCHAR            g_log_path[MAX_PATH] = {0};  // path of the open log file
 static bool             g_initialized = false;
 static const DWORD      MAX_LOG_SIZE = 1024 * 1024;  // 1 MB
 
-static void EnsureDirectory(PCWSTR dir) {
-    CreateDirectoryW(dir, NULL);
+// Build the primary log path: <exe-dir>\..\log\app.log
+// (exe is in bin\, so this resolves to the project-root \log when run from
+// the build tree).
+static void BuildLogPath(WCHAR* path, DWORD cch) {
+    WCHAR exe[MAX_PATH] = {0};
+    GetModuleFileNameW(NULL, exe, ARRAYSIZE(exe));
+    WCHAR* slash = wcsrchr(exe, L'\\');
+    if (slash) *slash = 0;                 // strip filename -> exe directory
+    StringCchPrintfW(path, cch, L"%s\\..\\log\\app.log", exe);
+}
+
+// Create the directory part of |path| (everything up to the final component).
+static void EnsureDirOf(WCHAR* path) {
+    WCHAR* slash = wcsrchr(path, L'\\');
+    if (slash) {
+        *slash = 0;
+        CreateDirectoryW(path, NULL);      // succeeds even if it already exists
+        *slash = L'\\';
+    }
 }
 
 static void OpenLogFile() {
-    WCHAR appdata[MAX_PATH];
-    if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appdata))) {
-        // Fallback: use temp directory
-        GetTempPathW(MAX_PATH, appdata);
-    }
-
-    WCHAR dir[MAX_PATH];
-    StringCchPrintfW(dir, ARRAYSIZE(dir), L"%s\\InternalKeyfreeze", appdata);
-    EnsureDirectory(dir);
-
-    WCHAR path[MAX_PATH];
-    StringCchPrintfW(path, ARRAYSIZE(path), L"%s\\app.log", dir);
-
-    g_file = CreateFileW(path, FILE_APPEND_DATA,
+    // 1. Primary: <exe-dir>\..\log\app.log
+    BuildLogPath(g_log_path, ARRAYSIZE(g_log_path));
+    EnsureDirOf(g_log_path);
+    g_file = CreateFileW(g_log_path, FILE_APPEND_DATA,
                          FILE_SHARE_READ | FILE_SHARE_WRITE,
                          NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+    if (g_file != INVALID_HANDLE_VALUE)
+        return;
+
+    // 2. Fallback: %LOCALAPPDATA%\InternalKeyfreeze\app.log
+    //    (e.g. when the exe sits under Program Files and is not writable as a
+    //    normal user)
+    WCHAR local[MAX_PATH] = {0};
+    if (SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_LOCAL_APPDATA, NULL, 0, local))) {
+        StringCchPrintfW(g_log_path, ARRAYSIZE(g_log_path),
+                         L"%s\\InternalKeyfreeze\\app.log", local);
+        EnsureDirOf(g_log_path);
+        g_file = CreateFileW(g_log_path, FILE_APPEND_DATA,
+                             FILE_SHARE_READ | FILE_SHARE_WRITE,
+                             NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+        if (g_file != INVALID_HANDLE_VALUE)
+            return;
+    }
+
+    // 3. Give up silently; Log::* calls become no-ops.
+    g_log_path[0] = 0;
 }
 
 static void TruncateIfNeeded() {
-    if (g_file == INVALID_HANDLE_VALUE) return;
+    if (g_file == INVALID_HANDLE_VALUE || g_log_path[0] == 0) return;
     DWORD size = GetFileSize(g_file, NULL);
     if (size != INVALID_FILE_SIZE && size > MAX_LOG_SIZE) {
-        // Close, reopen with truncation
+        // Reopen with truncation, write a header, then reopen in append mode.
         CloseHandle(g_file);
-        WCHAR appdata[MAX_PATH];
-        if (!SUCCEEDED(SHGetFolderPathW(NULL, CSIDL_APPDATA, NULL, 0, appdata)))
-            GetTempPathW(MAX_PATH, appdata);
-        WCHAR path[MAX_PATH];
-        StringCchPrintfW(path, ARRAYSIZE(path), L"%s\\InternalKeyfreeze\\app.log", appdata);
-        g_file = CreateFileW(path, GENERIC_WRITE, FILE_SHARE_READ,
+        g_file = CreateFileW(g_log_path, GENERIC_WRITE, FILE_SHARE_READ,
                              NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-        // Write a header noting truncation
+        if (g_file == INVALID_HANDLE_VALUE) return;
         const char* msg = "[LOG TRUNCATED - exceeded 1MB]\r\n";
         DWORD written;
         WriteFile(g_file, msg, (DWORD)strlen(msg), &written, NULL);
-        // Reopen in append mode
         CloseHandle(g_file);
-        g_file = CreateFileW(path, FILE_APPEND_DATA,
+        g_file = CreateFileW(g_log_path, FILE_APPEND_DATA,
                              FILE_SHARE_READ | FILE_SHARE_WRITE,
                              NULL, OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
     }

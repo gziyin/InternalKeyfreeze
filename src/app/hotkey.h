@@ -23,4 +23,10 @@ bool RegisterGlobalHotkey(HWND hwnd);
 // Unregisters the global hotkey. Safe to call even if not registered.
 void UnregisterGlobalHotkey();
 
+// Returns true if the global hotkey is currently registered.
+bool IsHotkeyEnabled();
+
+// Toggles the global hotkey on/off. Returns the new state.
+bool ToggleHotkey();
+
 #endif // IKF_HOTKEY_H
