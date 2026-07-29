@@ -17,6 +17,8 @@
 #define IDM_EXIT         1001
 #define IDM_LEARN        1002
 #define IDM_AUTOSTART    1003
+#define IDM_DEVICES      1004
+#define IDM_HOTKEY       1005
 #define TRAY_UID         1
 
 // ---- Global UI state ----
@@ -38,6 +40,9 @@ void StartLearning(HWND hwnd);
 
 // Toggles keyboard freeze. If no hwid is learned yet, enters learning mode.
 void ToggleInternalKeyboard(HWND hwnd);
+
+// Opens the device-manager dialog (visual per-device freeze control).
+void ShowDevicesDialog(HWND parent);
 
 // Registers the hidden message-only window class.
 ATOM MyRegisterClass(HINSTANCE instance);
