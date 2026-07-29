@@ -122,7 +122,7 @@ InternalKeyfreeze\
 1. 运行 `bin\InternalKeyfreeze.exe`（无需管理员）
 2. 首次左键托盘图标 → 提示"请在内置键盘上按任意键" → 按一下笔记本键盘任意键
    → 硬件 ID 记录到 `bin\InternalKeyfreeze.ini`，并立即冻结
-3. 之后**左键**托盘图标 = 冻结 / 恢复切换；**右键** = 重新识别 / 开机自启 / 退出
+3. 之后**左键**托盘图标 = 冻结 / 恢复切换；**右键** = 设备管理 / 重新识别 / 开机自启 / 全局热键 / 退出
 4. **全局热键 Ctrl+Shift+K** 也可随时切换冻结状态（无需切到托盘）
 5. 支持同时冻结多台内置键盘设备：右键"重新识别"可学习并追加设备，配置保存在 INI `[devices]` 节
 6. 程序退出或崩溃时驱动自动恢复输入，内置键盘永远不会被锁死；Ctrl+Alt+Del 始终可用
@@ -153,14 +153,16 @@ rc /I src\resources /I src\app /I sdk\library src\resources\InternalKeyfreeze.rc
 cl /EHsc /W4 /I src\app /I src\resources /I sdk\library ^
    src\app\main.cpp src\app\tray_app.cpp src\app\keyboard_filter.cpp ^
    src\app\interception_loader.cpp src\app\config.cpp src\app\hotkey.cpp src\app\autostart.cpp ^
-   src\resources\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe
+   src\app\device_info.cpp ^
+   src\resources\InternalKeyfreeze.res /link /SUBSYSTEM:WINDOWS /OUT:bin\InternalKeyfreeze.exe ^
+   comctl32.lib setupapi.lib
 
 :: 3) MinGW-w64 —— 资源编译为 COFF 并链接
 windres --output-format=coff -I src\resources -i src\resources\InternalKeyfreeze.rc -o build\InternalKeyfreeze.res.o
 g++ -O2 -municode -mwindows -std=c++17 -I sdk\library -I src\app -I src\resources ^
     src\app\main.cpp src\app\tray_app.cpp src\app\keyboard_filter.cpp src\app\interception_loader.cpp ^
-    src\app\config.cpp src\app\hotkey.cpp src\app\autostart.cpp ^
-    build\InternalKeyfreeze.res.o -o bin\InternalKeyfreeze.exe
+    src\app\config.cpp src\app\hotkey.cpp src\app\autostart.cpp src\app\device_info.cpp ^
+    build\InternalKeyfreeze.res.o -lcomctl32 -lsetupapi -o bin\InternalKeyfreeze.exe
 ```
 
 > `build\` 为编译中间目录（已在 `.gitignore` 中忽略），不会进入仓库。
@@ -174,6 +176,44 @@ windres ud.rc -O coff -o ud.res
 g++ -O2 -municode -mwindows UninstallDriver.cpp ud.res -o ..\..\driver\UninstallDriver.exe
 del ud.rc ud.res
 ```
+
+## 手动测试
+
+### 旧 INI 迁移（`[keyboard] hwid=` -> `[devices]`）
+
+程序首次加载配置时，若发现旧版单设备格式 `[keyboard] hwid=...`，会自动迁移到多设备格式 `[devices]`，并把旧文件备份为 `InternalKeyfreeze.ini.bak`。手动验证：
+
+1. 退出 InternalKeyfreeze（右键托盘 -> 退出）。
+2. 删除 `bin\InternalKeyfreeze.ini`（如存在 `.bak` 一并删掉，便于观察）。
+3. 新建 `bin\InternalKeyfreeze.ini`，内容只写两行：
+   ```ini
+   [keyboard]
+   hwid=ACPI\VEN_MSFT&DEV_0001
+   ```
+   （`hwid` 可换成你机器内置键盘的真实硬件 ID；用上面这行也能验证迁移逻辑本身。）
+4. 启动程序，查看日志（项目根 `log\app.log`），应依次出现：
+   - `Migrating legacy config: hwid=ACPI\VEN_MSFT&DEV_0001`
+   - `Config migrated to [devices] format, backup saved as .ini.bak`
+5. 打开 `bin\InternalKeyfreeze.ini`，应已变为：
+   ```ini
+   [devices]
+   count=1
+   device0=ACPI\VEN_MSFT&DEV_0001
+   ```
+   且 `bin\InternalKeyfreeze.ini.bak` 保留着旧的 `[keyboard]` 内容。
+6. 再次启动程序，日志应显示 `Config loaded (new format): 1 frozen device(s)`，且不再触发迁移。
+
+### 学习模式多候选对话框
+
+多候选对话框仅在“识别期内检测到 ≥2 个候选键盘”时弹出；单设备会自动选定（约 1.5 秒无新按键后）。要复现多候选对话框：
+
+1. 右键托盘 -> 重新识别内置键盘。
+2. 在弹窗提示下，**先在内置键盘按一两个键，再在外接键盘上也按一两个键**，让程序同时采集到两台设备。
+3. 停止按键约 1.5 秒后，会弹出“设备选择”对话框，列出候选设备及置信度供确认。
+
+### 设备管理对话框
+
+右键托盘 -> 设备管理：列表展示当前扫描到的所有键盘（友好名称 + 硬件 ID + 状态）。**直接点击“状态”列**即可在该设备的“已冻结 / 运行中”之间切换，立即生效并写入 INI。
 
 ## 依赖与许可
 

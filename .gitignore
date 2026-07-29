@@ -1,5 +1,6 @@
 # 用户配置文件（每个用户不同，不提交）
 bin/InternalKeyfreeze.ini
+*.ini.bak
 
 # 编译中间文件
 build/
@@ -32,11 +33,19 @@ Thumbs.db
 desktop.ini
 .DS_Store
 
-# 个人文件（非项目内容）
-抖音文案_*.md
+# 文档
+docs/
 
 # 打包产物（release zip 不进仓库，通过 GitHub Release 发布）
 release/
 
 # 个人工作区（含本地记忆、Pillow 等构建依赖，不进仓库）
 .workbuddy/
+.qoder/
+
+#
+log/*.log
+
+# Python 字节码缓存（运行图标生成脚本时产生）
+__pycache__/
+*.pyc

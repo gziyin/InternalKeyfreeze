@@ -1,5 +1,5 @@
 import os, sys, math
-from PIL import Image, ImageEnhance, ImageDraw
+from PIL import Image, ImageDraw
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.abspath(os.path.join(HERE, '..'))
@@ -20,37 +20,33 @@ def save_ico(src_large, name, sizes):
     print(name, sizes)
 
 
-def frozen(img):
-    im = img.copy()
-    im = ImageEnhance.Color(im).enhance(0.45)
-    im = ImageEnhance.Brightness(im).enhance(0.92)
-    ice = Image.new('RGBA', im.size, (110, 190, 250, 60))
-    im = Image.alpha_composite(im, ice)
-    d = ImageDraw.Draw(im)
-    cx = cy = im.size[0] // 2
-    R = int(im.size[0] * 0.16)
-    white = (255, 255, 255, 210)
-    w = max(2, int(im.size[0] * 0.012))
-    for i in range(6):
-        ang = math.radians(i * 60)
-        x2 = cx + R * math.cos(ang)
-        y2 = cy + R * math.sin(ang)
-        d.line([(cx, cy), (x2, y2)], fill=white, width=w)
-        bx = cx + R * 0.62 * math.cos(ang)
-        by = cy + R * 0.62 * math.sin(ang)
-        for sign in (-1, 1):
-            a2 = math.radians(i * 60 + sign * 32)
-            ex = bx + R * 0.30 * math.cos(a2)
-            ey = by + R * 0.30 * math.sin(a2)
-            d.line([(bx, by), (ex, ey)], fill=white, width=w)
-    return im
+def prohibition(size):
+    """Standard 'no entry' / prohibition sign: a bold red ring with a red
+    diagonal slash, on a transparent background. Drawn 4x supersampled then
+    downsampled with LANCZOS so the edges stay crisp at 16px tray size."""
+    import math
+    S = size * 4
+    img = Image.new('RGBA', (S, S), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    cx = cy = S / 2
+    red = (214, 38, 38, 255)
+    ring_r = S * 0.42
+    thickness = max(4, int(S * 0.12))
+    # Red ring
+    d.ellipse([cx - ring_r, cy - ring_r, cx + ring_r, cy + ring_r],
+              outline=red, width=thickness)
+    # Diagonal slash (bottom-left -> top-right), endpoints just inside the ring
+    r = ring_r * 0.72
+    p = r / math.sqrt(2)
+    d.line([(cx - p, cy + p), (cx + p, cy - p)], fill=red, width=thickness)
+    return img.resize((size, size), Image.LANCZOS)
 
 
 app_sizes = [16, 24, 32, 48, 64, 128, 256]
 save_ico(master, 'app-icon.ico', app_sizes)
 tray_sizes = [16, 20, 24, 32, 48]
 save_ico(master, 'tray-enabled.ico', tray_sizes)
-save_ico(frozen(rz(master, 256)), 'tray-frozen.ico', tray_sizes)
+save_ico(prohibition(256), 'tray-frozen.ico', tray_sizes)
 rz(master, 256).save(os.path.join(ASSETS, 'icon-256.png'))
 rz(master, 512).save(os.path.join(ASSETS, 'icon-512.png'))
 print('readme pngs done')

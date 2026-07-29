@@ -48,15 +48,17 @@ g++ -O2 -municode -mwindows -std=c++17 -finput-charset=UTF-8 -fexec-charset=UTF-
        src\app\interception_loader.cpp ^
        src\app\config.cpp ^
        src\app\hotkey.cpp ^
-       src\app\autostart.cpp
+       src\app\autostart.cpp ^
+       src\app\device_info.cpp
 if errorlevel 1 ( echo [ERR] g++ compile failed. & exit /b 1 )
 
 REM --- Step 4: Link executable ---
 echo [4/4] Linking executable ...
 if not exist bin mkdir bin
 g++ -O2 -municode -mwindows ^
-    main.o tray_app.o keyboard_filter.o interception_loader.o config.o hotkey.o autostart.o ^
+    main.o tray_app.o keyboard_filter.o interception_loader.o config.o hotkey.o autostart.o device_info.o ^
     build\InternalKeyfreeze.res.o ^
+    -lcomctl32 -lsetupapi ^
     -o bin\InternalKeyfreeze.exe
 if errorlevel 1 ( echo [ERR] g++ link failed. & exit /b 1 )
 
