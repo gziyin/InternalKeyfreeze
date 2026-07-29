@@ -21,6 +21,15 @@ bool IsDeviceFrozen(PCWSTR hwid) {
     return false;
 }
 
+int FindFrozenIndex(PCWSTR hwid) {
+    if (!hwid || !hwid[0]) return -1;
+    for (int i = 0; i < g_frozen_device_count; i++) {
+        if (_wcsicmp(g_frozen_hwids[i], hwid) == 0)
+            return i;
+    }
+    return -1;
+}
+
 bool AddFrozenDevice(PCWSTR hwid) {
     if (!hwid || !hwid[0]) return false;
     if (IsDeviceFrozen(hwid)) return false;       // already in list

@@ -23,6 +23,9 @@ extern int  g_frozen_device_count;
 // Returns true if |hwid| is in the frozen device list (case-insensitive).
 bool IsDeviceFrozen(PCWSTR hwid);
 
+// Returns the index of |hwid| in the frozen device list, or -1 if not present.
+int FindFrozenIndex(PCWSTR hwid);
+
 // Adds a device to the frozen list (if not already present and list not full).
 // Returns true if added, false if duplicate or full.
 bool AddFrozenDevice(PCWSTR hwid);

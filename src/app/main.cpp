@@ -15,6 +15,7 @@
 
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
+#include <commctrl.h>
 
 #include "tray_app.h"
 #include "keyboard_filter.h"
@@ -26,6 +27,12 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev_instance,
                       _In_ LPWSTR cmd_line, _In_ int cmd_show) {
     UNREFERENCED_PARAMETER(prev_instance);
     UNREFERENCED_PARAMETER(cmd_line);
+
+    // Common controls (ListView) for the device-manager dialog.
+    INITCOMMONCONTROLSEX icc;
+    icc.dwSize = sizeof(icc);
+    icc.dwICC = ICC_LISTVIEW_CLASSES;
+    InitCommonControlsEx(&icc);
 
     HANDLE g_mutex = CreateMutexW(NULL, FALSE, L"InternalKeyfreezeMutex");
     if (g_mutex == NULL || GetLastError() == ERROR_ALREADY_EXISTS) {
